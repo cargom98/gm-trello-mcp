@@ -220,3 +220,4 @@ __pycache__/
 dist/
 build/
 .env
+.trello_mcp_token.json
