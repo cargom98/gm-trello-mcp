@@ -111,18 +111,30 @@ The server will use the cached token from `~/.trello_mcp_token.json`.
 ## Available Tools
 
 ### Board Management
+
 - `list_boards` - List all accessible boards
 - `get_board` - Get board details
 
 ### List Management
+
 - `list_board_lists` - Get all lists on a board
 - `create_list` - Create a new list
 
 ### Card Management
+
 - `list_board_cards` - Get all cards on a board
 - `get_card` - Get card details
 - `create_card` - Create a new card
 - `update_card` - Update card properties (including moving between lists)
+
+### Organization/Workspace Management
+
+- `list_organizations` - List all organizations/workspaces you belong to
+- `get_organization` - Get organization details
+- `list_organization_boards` - Get all boards in an organization
+- `list_organization_members` - Get all members of an organization
+- `add_organization_member` - Add a member to an organization
+- `remove_organization_member` - Remove a member from an organization
 
 ## Security
 
@@ -164,6 +176,8 @@ python -m trello_mcp_server.auth --check
 
 For detailed authentication workflows and troubleshooting, see [AUTHENTICATION.md](AUTHENTICATION.md).
 
+For organization/workspace management guide, see [ORGANIZATIONS.md](ORGANIZATIONS.md).
+
 ## Development
 
 ```bash
@@ -175,4 +189,10 @@ python -m pytest
 
 # Check authentication
 python -m trello_mcp_server.auth --check
+
+# Test organization tools (interactive)
+python test_organizations.py
+
+# Test organization tools (specific org)
+python test_organizations.py --org-id myteam
 ```

@@ -401,6 +401,100 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["board_id", "name"]
             }
+        ),
+        Tool(
+            name="list_organizations",
+            description="List all organizations/workspaces the authenticated user belongs to",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            }
+        ),
+        Tool(
+            name="get_organization",
+            description="Get details about a specific organization/workspace",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "description": "The ID or name of the organization"
+                    }
+                },
+                "required": ["org_id"]
+            }
+        ),
+        Tool(
+            name="list_organization_boards",
+            description="Get all boards in an organization/workspace",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "description": "The ID or name of the organization"
+                    }
+                },
+                "required": ["org_id"]
+            }
+        ),
+        Tool(
+            name="list_organization_members",
+            description="Get all members of an organization/workspace",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "description": "The ID or name of the organization"
+                    }
+                },
+                "required": ["org_id"]
+            }
+        ),
+        Tool(
+            name="add_organization_member",
+            description="Add a member to an organization/workspace",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "description": "The ID or name of the organization"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Email address of the member to add"
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "description": "Full name of the member (optional)"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Member type: 'normal' or 'admin' (optional, defaults to 'normal')"
+                    }
+                },
+                "required": ["org_id", "email"]
+            }
+        ),
+        Tool(
+            name="remove_organization_member",
+            description="Remove a member from an organization/workspace",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "org_id": {
+                        "type": "string",
+                        "description": "The ID or name of the organization"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to remove"
+                    }
+                },
+                "required": ["org_id", "member_id"]
+            }
         )
     ]
 
@@ -478,6 +572,50 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             return [TextContent(
                 type="text",
                 text=f"Created list: {lst['name']}\nID: {lst['id']}\nBoard ID: {lst['idBoard']}"
+            )]
+
+        elif name == "list_organizations":
+            orgs = make_trello_request("GET", "/members/me/organizations")
+            result = "\n".join([f"- {org['displayName']} (ID: {org['id']}, Name: {org['name']})" for org in orgs])
+            return [TextContent(type="text", text=f"Your Organizations/Workspaces:\n{result}")]
+
+        elif name == "get_organization":
+            org = make_trello_request("GET", f"/organizations/{arguments['org_id']}")
+            return [TextContent(
+                type="text",
+                text=f"Organization: {org['displayName']}\nID: {org['id']}\nName: {org['name']}\nDescription: {org.get('desc', 'N/A')}\nURL: {org['url']}\nWebsite: {org.get('website', 'N/A')}"
+            )]
+
+        elif name == "list_organization_boards":
+            boards = make_trello_request("GET", f"/organizations/{arguments['org_id']}/boards")
+            result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
+            return [TextContent(type="text", text=f"Boards in organization:\n{result}")]
+
+        elif name == "list_organization_members":
+            members = make_trello_request("GET", f"/organizations/{arguments['org_id']}/members")
+            result = "\n".join([f"- {member['fullName']} (@{member['username']}, ID: {member['id']})" for member in members])
+            return [TextContent(type="text", text=f"Members in organization:\n{result}")]
+
+        elif name == "add_organization_member":
+            data = {
+                "email": arguments["email"]
+            }
+            if "full_name" in arguments:
+                data["fullName"] = arguments["full_name"]
+            if "type" in arguments:
+                data["type"] = arguments["type"]
+
+            member = make_trello_request("PUT", f"/organizations/{arguments['org_id']}/members", data=data)
+            return [TextContent(
+                type="text",
+                text=f"Added member to organization: {member.get('fullName', arguments['email'])}"
+            )]
+
+        elif name == "remove_organization_member":
+            make_trello_request("DELETE", f"/organizations/{arguments['org_id']}/members/{arguments['member_id']}")
+            return [TextContent(
+                type="text",
+                text=f"Removed member {arguments['member_id']} from organization"
             )]
 
         else:

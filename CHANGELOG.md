@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Added
+- **Organization/Workspace Management**: New tools for managing Trello organizations
+  - `list_organizations` - List all organizations/workspaces you belong to
+  - `get_organization` - Get detailed organization information
+  - `list_organization_boards` - Get all boards in an organization
+  - `list_organization_members` - Get all members of an organization
+  - `add_organization_member` - Add a member to an organization
+  - `remove_organization_member` - Remove a member from an organization
 - **Automatic OAuth Flow**: New `authorize_interactive` tool that automatically opens browser and captures token
   - Opens default browser to Trello authorization page
   - Starts local callback server (default port 8765)
