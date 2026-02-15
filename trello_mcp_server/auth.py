@@ -105,8 +105,20 @@ Examples:
         print("=" * 70)
         print()
         
+        # Check if user needs to create API key
+        create_key = input("Do you already have a Trello API key? (y/n): ").strip().lower()
+        
+        if create_key != 'y':
+            print()
+            print("Opening browser to create a new Trello Power-Up/app...")
+            import webbrowser
+            webbrowser.open("https://trello.com/power-ups/admin/new")
+            print()
+            print("After creating your app, copy the API key and paste it below.")
+            print()
+        
         # Get API key
-        api_key = input("Enter your Trello API key (from https://trello.com/app-key): ").strip()
+        api_key = input("Enter your Trello API key: ").strip()
         
         if not api_key:
             print("✗ Error: API key is required")
@@ -154,8 +166,20 @@ Examples:
         print("=" * 70)
         print()
         
+        # Check if user needs to create API key
+        create_key = input("Do you already have a Trello API key? (y/n): ").strip().lower()
+        
+        if create_key != 'y':
+            print()
+            print("Opening browser to create a new Trello Power-Up/app...")
+            import webbrowser
+            webbrowser.open("https://trello.com/power-ups/admin/new")
+            print()
+            print("After creating your app, copy the API key and paste it below.")
+            print()
+        
         # Get API key
-        api_key = input("Enter your Trello API key (from https://trello.com/app-key): ").strip()
+        api_key = input("Enter your Trello API key: ").strip()
         
         if not api_key:
             print("✗ Error: API key is required")

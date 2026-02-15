@@ -33,7 +33,7 @@ The power uses Trello's official API with OAuth authentication, ensuring secure 
 
 1. **Get your Trello API key**
    
-   Visit https://trello.com/app-key and copy your API key. This is free and takes just a few seconds.
+   Visit <https://trello.com/power-ups/admin/new> to create a new Power-Up/app. Once created, you'll get your API key. This is free and takes just a few seconds.
 
 2. **Install the Trello MCP server**
    
@@ -264,10 +264,11 @@ This will provide a URL to visit manually and prompt for the token.
 
 - **`YOUR_TRELLO_API_KEY`**: Your Trello API key for accessing the Trello API.
   - **How to get it:**
-    1. Go to https://trello.com/app-key
+    1. Go to <https://trello.com/power-ups/admin/new>
     2. Log in to your Trello account if prompted
-    3. Copy the API key shown at the top of the page
-    4. Replace `YOUR_TRELLO_API_KEY` in mcp.json with your actual key
+    3. Give your app a name (e.g., "Kiro MCP Server")
+    4. Copy the API key shown after creation
+    5. Replace `YOUR_TRELLO_API_KEY` in mcp.json with your actual key
 
 **After replacing the placeholder, your mcp.json should look like:**
 ```json

@@ -1,4 +1,8 @@
 {
+  "name": "trello",
+  "displayName": "Trello",
+  "description": "Manage Trello boards, lists, cards, and organizations directly from Kiro",
+  "icon": "logo.png",
   "mcpServers": {
     "trello": {
       "command": "python3",
