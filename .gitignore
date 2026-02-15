@@ -208,3 +208,15 @@ __marimo__/
 
 # Kiro MCP Manager - Sensitive configuration files
 .kiro/settings/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.env

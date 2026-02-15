@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Auto Commit Message",
+  "description": "Generates a conventional commit message based on the current git diff",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Analyze the current git diff and generate a conventional commit message following the format: type(scope): description. Use types like feat, fix, docs, style, refactor, test, chore. Keep the description concise and in present tense."
+  },
+  "workspaceFolderName": "gm-trello-mcp",
+  "shortName": "auto-commit-message"
+}
