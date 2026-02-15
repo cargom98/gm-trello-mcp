@@ -5,12 +5,10 @@
   "icon": "logo.png",
   "mcpServers": {
     "trello": {
-      "command": "python3",
-      "args": ["-m", "trello_mcp_server"],
-      "cwd": "/Users/carlosgomez/repos/gomezmera/gm-trello-mcp",
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/cargom98/gm-trello-mcp.git", "trello_mcp_server"],
       "env": {
-        "TRELLO_API_KEY": "e9a94d46df7b6a1bb3bd0df25d125b47",
-        "PYTHONPATH": "/Users/carlosgomez/repos/gomezmera/gm-trello-mcp"
+        "TRELLO_API_KEY": "YOUR_TRELLO_API_KEY"
       }
     }
   }

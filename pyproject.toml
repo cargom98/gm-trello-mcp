@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trello-mcp-server"
+version = "1.0.0"
+description = "Model Context Protocol server for Trello API integration"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Carlos Gomez"}
+]
+keywords = ["trello", "mcp", "model-context-protocol", "api"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "requests>=2.31.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cargom98/gm-trello-mcp"
+Repository = "https://github.com/cargom98/gm-trello-mcp"
+
+[project.scripts]
+trello_mcp_server = "trello_mcp_server.__main__:main"

@@ -37,10 +37,12 @@ The power uses Trello's official API with OAuth authentication, ensuring secure 
 
 2. **Install the Trello MCP server**
    
-   The server is included in this workspace. Ensure you have the dependencies installed:
+   The power will automatically install the server when you activate it. No manual installation needed!
+   
+   Alternatively, you can install it manually:
    
    ```bash
-   pip install -r requirements.txt
+   uvx --from git+https://github.com/cargom98/gm-trello-mcp.git trello_mcp_server
    ```
 
 3. **Configure in Kiro**
@@ -51,8 +53,8 @@ The power uses Trello's official API with OAuth authentication, ensuring secure 
    {
      "mcpServers": {
        "trello": {
-         "command": "python",
-         "args": ["-m", "trello_mcp_server"],
+         "command": "uvx",
+         "args": ["--from", "git+https://github.com/cargom98/gm-trello-mcp.git", "trello_mcp_server"],
          "env": {
            "TRELLO_API_KEY": "your_api_key_from_trello"
          }
@@ -275,8 +277,8 @@ This will provide a URL to visit manually and prompt for the token.
 {
   "mcpServers": {
     "trello": {
-      "command": "python",
-      "args": ["-m", "trello_mcp_server"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/cargom98/gm-trello-mcp.git", "trello_mcp_server"],
       "env": {
         "TRELLO_API_KEY": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
       }

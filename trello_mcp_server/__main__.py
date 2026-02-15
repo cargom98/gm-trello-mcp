@@ -1,6 +1,10 @@
 """Main entry point for the Trello MCP server."""
 import asyncio
-from .server import main
+from .server import main as server_main
+
+def main():
+    """Entry point for the trello_mcp_server command."""
+    asyncio.run(server_main())
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
