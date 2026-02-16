@@ -1,7 +1,10 @@
 ## [1.1.0] - 2026-02-16
 
 ### Added
-- 
+- **Card Member Management**: Tools for managing card member assignments
+  - `add_card_member` - Add a member to a card
+  - `remove_card_member` - Remove a member from a card
+  - `list_card_members` - List all members assigned to a card
 
 ### Changed
 - 
