@@ -1,18 +1,45 @@
 # Trello MCP Server
 
-A Model Context Protocol (MCP) server that integrates Trello with Kiro, enabling you to manage boards, lists, cards, and organizations directly from your development environment.
+A Model Context Protocol (MCP) server that provides programmatic access to Trello's API. Manage boards, lists, cards, and organizations directly from any MCP-compatible client.
 
 ## Quick Start
 
-### 1. Get API Key
+### 1. Install
+
+```bash
+# Using uvx (recommended)
+uvx trello-mcp-server
+
+# Using uv
+uv tool install trello-mcp-server
+
+# Using pip
+pip install trello-mcp-server
+```
+
+### 2. Get API Key
 
 Visit https://trello.com/power-ups/admin/new and create a Power-Up to get your API key (free, takes seconds).
 
-### 2. Install as Kiro Power
+### 3. Configure MCP Client
 
-This repo is designed to be installed as a Kiro power. The `mcp.json` file contains the configuration that will be automatically applied when you install the power.
+Add to your MCP settings configuration file:
 
-### 3. Authenticate
+```json
+{
+  "mcpServers": {
+    "trello": {
+      "command": "uvx",
+      "args": ["trello-mcp-server"],
+      "env": {
+        "TRELLO_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+### 4. Authenticate
 
 On first use, the server automatically opens your browser to authorize access. Click "Allow" and you're done!
 
@@ -62,7 +89,6 @@ python test_organizations.py
 
 ## Documentation
 
-- **POWER.md** - Complete power documentation with workflows and troubleshooting
 - **docs/AUTHENTICATION.md** - Detailed authentication flows
 - **docs/ORGANIZATIONS.md** - Organization management guide
 - **docs/STARTUP_FLOW.md** - Server startup process
@@ -88,6 +114,35 @@ python test_organizations.py
 - Trello API: https://developer.atlassian.com/cloud/trello/
 - Get API Key: https://trello.com/power-ups/admin/new
 - Manage Tokens: https://trello.com/my/account
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development Setup
+
+```bash
+git clone https://github.com/cargom98/gm-trello-mcp.git
+cd gm-trello-mcp
+./setup.sh
+```
+
+### Running Tests
+
+```bash
+python -m pytest
+python test_auth.py
+python test_organizations.py
+```
+
+### Releasing
+
+See [RELEASING.md](RELEASING.md) for detailed release instructions.
+
+Quick release:
+```bash
+./release.sh
+```
 
 ## License
 

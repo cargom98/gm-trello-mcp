@@ -4,8 +4,8 @@
 
 ```
 trello-mcp-server/
-├── .kiro/                      # Kiro configuration
-│   ├── settings/               # MCP server settings
+├── .kiro/                      # Development configuration
+│   ├── settings/               # Local MCP server settings
 │   └── steering/               # Project steering rules
 ├── trello_mcp_server/          # Main Python package
 │   ├── __init__.py            # Package initialization
@@ -23,10 +23,7 @@ trello-mcp-server/
 ├── requirements.txt           # Python dependencies
 ├── setup.sh                   # Setup automation script
 ├── pyproject.toml             # Python project metadata
-├── mcp.json                   # MCP server configuration (power config)
-├── logo.png                   # Power icon
-├── POWER.md                   # Kiro power documentation (main docs)
-├── README.md                  # Developer quick start
+├── README.md                  # Quick start guide
 └── CHANGELOG.md               # Version history
 ```
 
@@ -40,13 +37,11 @@ trello-mcp-server/
   - OAuth callback server for interactive auth
 
 ### Configuration
-- `.kiro/settings/mcp.json` - MCP server configuration (workspace-level)
-- `~/.kiro/settings/mcp.json` - User-level MCP configuration
+- `.kiro/settings/mcp.json` - Local MCP server configuration (for development)
 - `~/.trello_mcp_token.json` - Cached OAuth credentials (secure, 600 permissions)
 
 ### Documentation
-- `README.md` - Developer quick start and overview
-- `POWER.md` - Kiro power documentation with workflows (main user docs)
+- `README.md` - Quick start guide and installation
 - `CHANGELOG.md` - Version history
 - `docs/AUTHENTICATION.md` - Complete authentication workflows
 - `docs/ORGANIZATIONS.md` - Organization/workspace management

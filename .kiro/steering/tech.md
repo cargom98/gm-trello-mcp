@@ -60,13 +60,13 @@ python test_organizations.py --org-id myteam
 ```
 
 ### MCP Configuration
-Add to `.kiro/settings/mcp.json`:
+Add to your MCP client's settings file:
 ```json
 {
   "mcpServers": {
     "trello": {
-      "command": "python",
-      "args": ["-m", "trello_mcp_server"],
+      "command": "uvx",
+      "args": ["trello-mcp-server"],
       "env": {
         "TRELLO_API_KEY": "your_api_key"
       }
