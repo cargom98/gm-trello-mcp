@@ -577,6 +577,104 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["board_id", "label_id"]
             }
+        ),
+        Tool(
+            name="list_board_members",
+            description="List all members of a board with their permission levels",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    }
+                },
+                "required": ["board_id"]
+            }
+        ),
+        Tool(
+            name="add_board_member",
+            description="Add an existing Trello user to a board with specified permission level",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to add"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Permission level: 'admin', 'normal', or 'observer' (optional, defaults to 'normal')"
+                    }
+                },
+                "required": ["board_id", "member_id"]
+            }
+        ),
+        Tool(
+            name="remove_board_member",
+            description="Remove a member from a board",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to remove"
+                    }
+                },
+                "required": ["board_id", "member_id"]
+            }
+        ),
+        Tool(
+            name="update_board_member",
+            description="Update a member's permission level on a board",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to update"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "New permission level: 'admin', 'normal', or 'observer'"
+                    }
+                },
+                "required": ["board_id", "member_id", "type"]
+            }
+        ),
+        Tool(
+            name="invite_board_member",
+            description="Invite a new member to a board via email address",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Email address of the person to invite"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Permission level: 'admin', 'normal', or 'observer' (optional, defaults to 'normal')"
+                    }
+                },
+                "required": ["board_id", "email"]
+            }
         )
     ]
 
@@ -605,6 +703,91 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             cards = make_trello_request("GET", f"/boards/{arguments['board_id']}/cards")
             result = "\n".join([f"- {card['name']} (ID: {card['id']}, List: {card['idList']})" for card in cards])
             return [TextContent(type="text", text=f"Cards on board:\n{result}")]
+
+        elif name == "list_board_members":
+            board_id = arguments["board_id"]
+            members = make_trello_request("GET", f"/boards/{board_id}/members")
+            
+            # Format response with member details (name, username, ID, permission)
+            result = "\n".join([
+                f"- {member['fullName']} (@{member['username']}, ID: {member['id']}, Permission: {member.get('memberType', 'normal')})"
+                for member in members
+            ])
+            return [TextContent(type="text", text=f"Board Members:\n{result}")]
+
+        elif name == "add_board_member":
+            board_id = arguments["board_id"]
+            member_id = arguments["member_id"]
+            member_type = arguments.get("type", "normal")
+            
+            # Build query parameters with type
+            params = {"type": member_type}
+            
+            # Call make_trello_request with PUT method
+            result = make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
+            
+            # Get member details for confirmation
+            member = make_trello_request("GET", f"/members/{member_id}")
+            
+            return [TextContent(
+                type="text",
+                text=f"Added member to board: {member['fullName']} (@{member['username']})\nPermission: {member_type}"
+            )]
+
+        elif name == "remove_board_member":
+            board_id = arguments["board_id"]
+            member_id = arguments["member_id"]
+            
+            # Call make_trello_request with DELETE method
+            make_trello_request("DELETE", f"/boards/{board_id}/members/{member_id}")
+            
+            return [TextContent(
+                type="text",
+                text=f"Removed member {member_id} from board"
+            )]
+
+        elif name == "update_board_member":
+            board_id = arguments["board_id"]
+            member_id = arguments["member_id"]
+            member_type = arguments["type"]
+            
+            # Validate type is one of: "admin", "normal", "observer"
+            valid_permissions = ["admin", "normal", "observer"]
+            if member_type not in valid_permissions:
+                return [TextContent(
+                    type="text",
+                    text=f"Error: Invalid permission type. Must be one of: {', '.join(valid_permissions)}"
+                )]
+            
+            # Build query parameters with type
+            params = {"type": member_type}
+            
+            # Call make_trello_request with PUT method
+            make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
+            
+            # Get member details for confirmation
+            member = make_trello_request("GET", f"/members/{member_id}")
+            
+            return [TextContent(
+                type="text",
+                text=f"Updated member permission: {member['fullName']} (@{member['username']})\nNew permission: {member_type}"
+            )]
+
+        elif name == "invite_board_member":
+            board_id = arguments["board_id"]
+            email = arguments["email"]
+            member_type = arguments.get("type", "normal")
+            
+            # Build query parameters with email and type
+            params = {"email": email, "type": member_type}
+            
+            # Call make_trello_request with PUT method
+            make_trello_request("PUT", f"/boards/{board_id}/members", params=params)
+            
+            return [TextContent(
+                type="text",
+                text=f"Invited {email} to board\nPermission: {member_type}"
+            )]
 
         elif name == "create_card":
             data = {
