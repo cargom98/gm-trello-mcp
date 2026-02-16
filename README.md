@@ -1,89 +1,46 @@
 # Trello MCP Server
 
-A Model Context Protocol (MCP) server for interacting with Trello boards, lists, and cards.
+A Model Context Protocol (MCP) server that integrates Trello with Kiro, enabling you to manage boards, lists, cards, and organizations directly from your development environment.
+
+## Quick Start
+
+### 1. Get API Key
+
+Visit https://trello.com/power-ups/admin/new and create a Power-Up to get your API key (free, takes seconds).
+
+### 2. Install as Kiro Power
+
+This repo is designed to be installed as a Kiro power. The `mcp.json` file contains the configuration that will be automatically applied when you install the power.
+
+### 3. Authenticate
+
+On first use, the server automatically opens your browser to authorize access. Click "Allow" and you're done!
 
 ## Features
 
-- List all boards
-- Get board details
-- List cards on a board
-- Create new cards
-- Update card details
-- Move cards between lists
-- Automatic authentication on first startup
+- **Boards**: List and get board details
+- **Lists**: List and create board lists
+- **Cards**: List, create, and update cards (including moving between lists)
+- **Organizations**: Manage workspaces, boards, and team members
 
-## Setup
+## Development
 
-1. Create a virtual environment:
+### Setup
 
 ```bash
+# Quick setup
+./setup.sh
+
+# Or manually
 python -m venv venv
-source venv/bin/activate  # On macOS/Linux
-```
-
-2. Install dependencies:
-
-```bash
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. Get your Trello API key from https://trello.com/app-key
-
-## Usage with Kiro
-
-Add to your `.kiro/settings/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "trello": {
-      "command": "python",
-      "args": ["-m", "trello_mcp_server"],
-      "env": {
-        "TRELLO_API_KEY": "your_api_key_from_trello"
-      }
-    }
-  }
-}
-```
-
-**Important:** Only store your API key in mcp.json, never the token.
-
-## Authentication
-
-The server requires authentication before it can start. You have two options:
-
-### Option 1: Use MCP Tools (Recommended)
-
-1. **First time setup** - Set both credentials as environment variables to start the server:
-
-```json
-{
-  "mcpServers": {
-    "trello": {
-      "command": "python",
-      "args": ["-m", "trello_mcp_server"],
-      "env": {
-        "TRELLO_API_KEY": "your_api_key",
-        "TRELLO_TOKEN": "temporary_token"
-      }
-    }
-  }
-}
-```
-
-2. **Use the `authorize_interactive` tool** in Kiro to get a permanent token:
-   - Opens browser automatically
-   - Captures token and saves to `~/.trello_mcp_token.json`
-
-3. **Remove credentials from mcp.json** - The cached token will be used automatically
-
-### Option 2: Manual Authentication
-
-Use the standalone authentication script:
+### Authentication
 
 ```bash
-# Interactive (opens browser and captures token)
+# Interactive (opens browser)
 python -m trello_mcp_server.auth --interactive
 
 # Manual (copy-paste token)
@@ -93,106 +50,45 @@ python -m trello_mcp_server.auth --manual
 python -m trello_mcp_server.auth --check
 ```
 
-After authentication, configure without credentials:
-
-```json
-{
-  "mcpServers": {
-    "trello": {
-      "command": "python",
-      "args": ["-m", "trello_mcp_server"]
-    }
-  }
-}
-```
-
-The server will use the cached token from `~/.trello_mcp_token.json`.
-
-## Available Tools
-
-### Board Management
-
-- `list_boards` - List all accessible boards
-- `get_board` - Get board details
-
-### List Management
-
-- `list_board_lists` - Get all lists on a board
-- `create_list` - Create a new list
-
-### Card Management
-
-- `list_board_cards` - Get all cards on a board
-- `get_card` - Get card details
-- `create_card` - Create a new card
-- `update_card` - Update card properties (including moving between lists)
-
-### Organization/Workspace Management
-
-- `list_organizations` - List all organizations/workspaces you belong to
-- `get_organization` - Get organization details
-- `list_organization_boards` - Get all boards in an organization
-- `list_organization_members` - Get all members of an organization
-- `add_organization_member` - Add a member to an organization
-- `remove_organization_member` - Remove a member from an organization
-
-## Security
-
-- API keys are stored in mcp.json (version controlled, but safe to share within your team)
-- Tokens are stored in `~/.trello_mcp_token.json` (never committed to version control)
-- Token cache file has restricted permissions (600 - owner read/write only)
-- Tokens never expire unless manually revoked
-
-## Troubleshooting
-
-### Server won't start
-
-**Cause:** No authentication found
-
-**Solution:** Ensure `TRELLO_API_KEY` is set in mcp.json or as an environment variable. The server will automatically open your browser to complete authentication.
-
-### Browser doesn't open
-
-**Cause:** No default browser configured or headless environment
-
-**Solution:** Use manual authentication:
-```bash
-python -m trello_mcp_server.auth --manual
-```
-
-### Port already in use
-
-**Cause:** Port 8765 is already in use during OAuth callback
-
-**Solution:** The authentication will fail and you can retry. If it persists, use manual authentication.
-
-### Check authentication status
+### Testing
 
 ```bash
-python -m trello_mcp_server.auth --check
-```
-
-## Advanced Usage
-
-For detailed authentication workflows and troubleshooting, see [AUTHENTICATION.md](AUTHENTICATION.md).
-
-For organization/workspace management guide, see [ORGANIZATIONS.md](ORGANIZATIONS.md).
-
-## Development
-
-```bash
-# Install in development mode
-pip install -e .
-
 # Run tests
 python -m pytest
 
-# Check authentication
-python -m trello_mcp_server.auth --check
-
-# Test organization tools (interactive)
+# Test organization tools
 python test_organizations.py
-
-# Test organization tools (specific org)
-python test_organizations.py --org-id myteam
 ```
+
+## Documentation
+
+- **POWER.md** - Complete power documentation with workflows and troubleshooting
+- **docs/AUTHENTICATION.md** - Detailed authentication flows
+- **docs/ORGANIZATIONS.md** - Organization management guide
+- **docs/STARTUP_FLOW.md** - Server startup process
+- **docs/FUTURE_FEATURES.md** - Planned features
+- **CHANGELOG.md** - Version history
+
+## Architecture
+
+- **Language**: Python 3.8+
+- **Protocol**: MCP with stdio transport
+- **Authentication**: OAuth 1.0a with automatic token caching
+- **Token Storage**: `~/.trello_mcp_token.json` (600 permissions)
+
+## Security
+
+- API keys stored in MCP configuration (safe to share within team)
+- Tokens stored in home directory (never committed)
+- Automatic file permissions (600) on token cache
+- Tokens never expire unless manually revoked
+
+## Support
+
+- Trello API: https://developer.atlassian.com/cloud/trello/
+- Get API Key: https://trello.com/power-ups/admin/new
+- Manage Tokens: https://trello.com/my/account
+
+## License
+
+See LICENSE file for details.

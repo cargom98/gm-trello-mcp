@@ -12,20 +12,22 @@ trello-mcp-server/
 │   ├── __main__.py            # Entry point for `python -m trello_mcp_server`
 │   ├── server.py              # MCP server, tools, API client, auth logic
 │   └── auth.py                # Standalone authentication CLI
-├── powers/trello/              # Kiro power definition
-│   ├── POWER.md               # Power documentation and workflows
-│   └── mcp.json               # MCP server configuration template
+├── docs/                       # Detailed documentation
+│   ├── AUTHENTICATION.md      # Detailed auth flow documentation
+│   ├── ORGANIZATIONS.md       # Organization management guide
+│   ├── STARTUP_FLOW.md        # Server startup documentation
+│   └── FUTURE_FEATURES.md     # Planned features
 ├── venv/                       # Python virtual environment (gitignored)
 ├── test_auth.py               # Authentication tests
 ├── test_organizations.py      # Organization management tests
 ├── requirements.txt           # Python dependencies
 ├── setup.sh                   # Setup automation script
-├── README.md                  # Main documentation
-├── AUTHENTICATION.md          # Detailed auth flow documentation
-├── ORGANIZATIONS.md           # Organization management guide
-├── CHANGELOG.md               # Version history
-├── FUTURE_FEATURES.md         # Planned features
-└── STARTUP_FLOW.md            # Server startup documentation
+├── pyproject.toml             # Python project metadata
+├── mcp.json                   # MCP server configuration (power config)
+├── logo.png                   # Power icon
+├── POWER.md                   # Kiro power documentation (main docs)
+├── README.md                  # Developer quick start
+└── CHANGELOG.md               # Version history
 ```
 
 ## Key Files
@@ -43,10 +45,13 @@ trello-mcp-server/
 - `~/.trello_mcp_token.json` - Cached OAuth credentials (secure, 600 permissions)
 
 ### Documentation
-- `README.md` - Quick start and feature overview
-- `AUTHENTICATION.md` - Complete authentication workflows
-- `ORGANIZATIONS.md` - Organization/workspace management
-- `powers/trello/POWER.md` - Kiro power documentation with workflows
+- `README.md` - Developer quick start and overview
+- `POWER.md` - Kiro power documentation with workflows (main user docs)
+- `CHANGELOG.md` - Version history
+- `docs/AUTHENTICATION.md` - Complete authentication workflows
+- `docs/ORGANIZATIONS.md` - Organization/workspace management
+- `docs/STARTUP_FLOW.md` - Server startup process
+- `docs/FUTURE_FEATURES.md` - Planned features
 
 ## Code Organization
 

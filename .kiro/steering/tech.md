@@ -19,7 +19,7 @@
   - `server.py` - MCP server implementation, tool handlers, API client
   - `auth.py` - Standalone authentication CLI
   - `__main__.py` - Package entry point
-- `powers/trello/` - Kiro power configuration
+- `docs/` - Detailed documentation
 - Test files at root level
 
 ## Common Commands
