@@ -495,6 +495,88 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["org_id", "member_id"]
             }
+        ),
+        Tool(
+            name="add_card_label",
+            description="Add a label to a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    },
+                    "label_id": {
+                        "type": "string",
+                        "description": "The ID of the label to add"
+                    }
+                },
+                "required": ["card_id", "label_id"]
+            }
+        ),
+        Tool(
+            name="remove_card_label",
+            description="Remove a label from a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    },
+                    "label_id": {
+                        "type": "string",
+                        "description": "The ID of the label to remove"
+                    }
+                },
+                "required": ["card_id", "label_id"]
+            }
+        ),
+        Tool(
+            name="list_card_labels",
+            description="List all labels on a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    }
+                },
+                "required": ["card_id"]
+            }
+        ),
+        Tool(
+            name="list_board_labels",
+            description="List all available labels on a board",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    }
+                },
+                "required": ["board_id"]
+            }
+        ),
+        Tool(
+            name="filter_cards_by_label",
+            description="Filter cards on a board by a specific label",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "string",
+                        "description": "The ID of the board"
+                    },
+                    "label_id": {
+                        "type": "string",
+                        "description": "The ID of the label to filter by"
+                    }
+                },
+                "required": ["board_id", "label_id"]
+            }
         )
     ]
 
@@ -617,6 +699,109 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                 type="text",
                 text=f"Removed member {arguments['member_id']} from organization"
             )]
+
+        elif name == "add_card_label":
+            data = {"value": arguments["label_id"]}
+            result = make_trello_request("POST", f"/cards/{arguments['card_id']}/idLabels", data=data)
+            
+            # Get card details to include in response
+            card = make_trello_request("GET", f"/cards/{arguments['card_id']}")
+            
+            # Find the label details from the card's labels
+            label_info = None
+            for label in card.get('labels', []):
+                if label['id'] == arguments['label_id']:
+                    label_info = label
+                    break
+            
+            if label_info:
+                label_name = label_info.get('name', 'Unnamed')
+                label_color = label_info.get('color', 'none')
+                return [TextContent(
+                    type="text",
+                    text=f"Added label to card: {card['name']}\nLabel: {label_name} ({label_color})\nCard ID: {card['id']}"
+                )]
+            else:
+                return [TextContent(
+                    type="text",
+                    text=f"Added label to card: {card['name']}\nCard ID: {card['id']}"
+                )]
+
+        elif name == "remove_card_label":
+            make_trello_request("DELETE", f"/cards/{arguments['card_id']}/idLabels/{arguments['label_id']}")
+            return [TextContent(
+                type="text",
+                text=f"Removed label from card\nCard ID: {arguments['card_id']}\nLabel ID: {arguments['label_id']}"
+            )]
+
+        elif name == "list_card_labels":
+            labels = make_trello_request("GET", f"/cards/{arguments['card_id']}/labels")
+            
+            # Handle empty label list case
+            if not labels:
+                return [TextContent(
+                    type="text",
+                    text="Labels on card:\n(No labels)"
+                )]
+            
+            # Format response as list of labels with name, color, and ID
+            result = "\n".join([
+                f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
+                for label in labels
+            ])
+            return [TextContent(type="text", text=f"Labels on card:\n{result}")]
+
+        elif name == "list_board_labels":
+            labels = make_trello_request("GET", f"/boards/{arguments['board_id']}/labels")
+            
+            # Format response as list of available labels with name, color, and ID
+            result = "\n".join([
+                f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
+                for label in labels
+            ])
+            return [TextContent(type="text", text=f"Available labels on board:\n{result}")]
+
+        elif name == "filter_cards_by_label":
+            # Extract board_id and label_id from arguments
+            board_id = arguments['board_id']
+            label_id = arguments['label_id']
+            
+            # Call make_trello_request() with GET method to /boards/{board_id}/cards
+            cards = make_trello_request("GET", f"/boards/{board_id}/cards")
+            
+            # Filter cards by checking if label_id is in card's idLabels array
+            filtered_cards = [card for card in cards if label_id in card.get('idLabels', [])]
+            
+            # Handle empty results case
+            if not filtered_cards:
+                # Get label name for better user experience
+                labels = make_trello_request("GET", f"/boards/{board_id}/labels")
+                label_name = "Unknown"
+                for label in labels:
+                    if label['id'] == label_id:
+                        label_name = label.get('name', 'Unnamed')
+                        break
+                
+                return [TextContent(
+                    type="text",
+                    text=f"Cards with label {label_name}:\n(No cards found)"
+                )]
+            
+            # Get label name for the response
+            label_name = "Unknown"
+            if filtered_cards:
+                # Get label details from the first card's labels
+                for label in filtered_cards[0].get('labels', []):
+                    if label['id'] == label_id:
+                        label_name = label.get('name', 'Unnamed')
+                        break
+            
+            # Format response as list of cards with name, ID, and list ID
+            result = "\n".join([
+                f"- {card['name']} (ID: {card['id']}, List: {card['idList']})"
+                for card in filtered_cards
+            ])
+            return [TextContent(type="text", text=f"Cards with label {label_name}:\n{result}")]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
