@@ -675,6 +675,56 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["board_id", "email"]
             }
+        ),
+        Tool(
+            name="add_card_member",
+            description="Add a member to a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to add"
+                    }
+                },
+                "required": ["card_id", "member_id"]
+            }
+        ),
+        Tool(
+            name="remove_card_member",
+            description="Remove a member from a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    },
+                    "member_id": {
+                        "type": "string",
+                        "description": "The ID of the member to remove"
+                    }
+                },
+                "required": ["card_id", "member_id"]
+            }
+        ),
+        Tool(
+            name="list_card_members",
+            description="List all members assigned to a card",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "description": "The ID of the card"
+                    }
+                },
+                "required": ["card_id"]
+            }
         )
     ]
 
@@ -985,6 +1035,35 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                 for card in filtered_cards
             ])
             return [TextContent(type="text", text=f"Cards with label {label_name}:\n{result}")]
+
+        elif name == "add_card_member":
+            data = {"value": arguments["member_id"]}
+            make_trello_request("POST", f"/cards/{arguments['card_id']}/idMembers", data=data)
+            return [TextContent(
+                type="text",
+                text=f"Added member {arguments['member_id']} to card {arguments['card_id']}"
+            )]
+
+        elif name == "remove_card_member":
+            make_trello_request("DELETE", f"/cards/{arguments['card_id']}/idMembers/{arguments['member_id']}")
+            return [TextContent(
+                type="text",
+                text=f"Removed member {arguments['member_id']} from card {arguments['card_id']}"
+            )]
+
+        elif name == "list_card_members":
+            members = make_trello_request("GET", f"/cards/{arguments['card_id']}/members")
+            
+            # Handle empty member list case
+            if not members:
+                return [TextContent(type="text", text="No members assigned to this card")]
+            
+            # Format response as list of members with fullName, username, and ID
+            result = "\n".join([
+                f"- {member['fullName']} (@{member['username']}, ID: {member['id']})"
+                for member in members
+            ])
+            return [TextContent(type="text", text=f"Members on card:\n{result}")]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
