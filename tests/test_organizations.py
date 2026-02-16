@@ -10,8 +10,10 @@ Usage:
 import asyncio
 import sys
 import os
-from trello_mcp_server.server import call_tool
-from trello_mcp_server.auth import TrelloAuth
+# Add parent directory to path to import from root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from server import call_tool
+from auth import TrelloAuth
 
 async def test_list_organizations():
     """Test listing all organizations."""
@@ -68,7 +70,7 @@ async def interactive_mode():
     if not auth.is_authenticated():
         print("\n❌ Not authenticated!")
         print("Please run authentication first:")
-        print("  python -m trello_mcp_server.auth --interactive")
+        print("  python auth.py --interactive")
         return
     
     print("\n✅ Authentication verified")
@@ -108,7 +110,7 @@ async def automated_mode(org_id):
     if not auth.is_authenticated():
         print("\n❌ Not authenticated!")
         print("Please run authentication first:")
-        print("  python -m trello_mcp_server.auth --interactive")
+        print("  python auth.py --interactive")
         return
     
     print("\n✅ Authentication verified")

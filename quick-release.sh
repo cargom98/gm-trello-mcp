@@ -1,20 +1,15 @@
 #!/bin/bash
 # Quick release script for patch versions
-# Usage: ./quick-release.sh "Bug fix description"
+# Usage: ./quick-release.sh [optional description]
 
 set -e
-
-if [ -z "$1" ]; then
-    echo "Usage: ./quick-release.sh \"Release description\""
-    echo "Example: ./quick-release.sh \"Fix authentication timeout issue\""
-    exit 1
-fi
 
 DESCRIPTION="$1"
 
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${BLUE}Quick Patch Release${NC}"
@@ -30,7 +25,40 @@ patch=$((patch + 1))
 new_version="$major.$minor.$patch"
 
 echo "Version: $current_version → $new_version"
-echo "Description: $DESCRIPTION"
+
+# Get commits since last tag
+last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -z "$last_tag" ]; then
+    commits=$(git log --pretty=format:"%s" --no-merges)
+else
+    commits=$(git log "${last_tag}..HEAD" --pretty=format:"%s" --no-merges)
+fi
+
+# If description provided, use it; otherwise generate from commits
+if [ -n "$DESCRIPTION" ]; then
+    echo "Description: $DESCRIPTION"
+    changelog_content="- $DESCRIPTION"
+else
+    echo -e "${YELLOW}Generating changelog from commits...${NC}"
+    changelog_content=""
+    while IFS= read -r commit; do
+        [ -z "$commit" ] && continue
+        # Extract message from conventional commits or use as-is
+        if [[ $commit =~ ^(feat|fix|refactor|perf|style|docs|chore)(\(.*\))?:\ (.+) ]]; then
+            changelog_content="${changelog_content}- ${BASH_REMATCH[3]}\n"
+        else
+            changelog_content="${changelog_content}- ${commit}\n"
+        fi
+    done <<< "$commits"
+    
+    if [ -z "$changelog_content" ]; then
+        changelog_content="- Patch release"
+    fi
+    
+    echo -e "\nChangelog entries:"
+    echo -e "$changelog_content"
+fi
+
 echo ""
 
 # Update version
@@ -45,7 +73,8 @@ date=$(date +%Y-%m-%d)
 temp_file=$(mktemp)
 echo -e "## [$new_version] - $date\n" > "$temp_file"
 echo -e "### Fixed" >> "$temp_file"
-echo -e "- $DESCRIPTION\n" >> "$temp_file"
+echo -e "$changelog_content" >> "$temp_file"
+echo "" >> "$temp_file"
 cat CHANGELOG.md >> "$temp_file"
 mv "$temp_file" CHANGELOG.md
 
@@ -55,9 +84,13 @@ python -m build
 
 # Commit and tag
 git add pyproject.toml CHANGELOG.md
-git commit -m "chore: release version $new_version
+if [ -n "$DESCRIPTION" ]; then
+    git commit -m "chore: release version $new_version
 
 $DESCRIPTION"
+else
+    git commit -m "chore: release version $new_version"
+fi
 git tag -a "v$new_version" -m "Release version $new_version"
 
 echo -e "${GREEN}✓${NC} Release $new_version ready"

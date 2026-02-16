@@ -7,19 +7,21 @@ trello-mcp-server/
 ├── .kiro/                      # Development configuration
 │   ├── settings/               # Local MCP server settings
 │   └── steering/               # Project steering rules
-├── trello_mcp_server/          # Main Python package
-│   ├── __init__.py            # Package initialization
-│   ├── __main__.py            # Entry point for `python -m trello_mcp_server`
-│   ├── server.py              # MCP server, tools, API client, auth logic
-│   └── auth.py                # Standalone authentication CLI
 ├── docs/                       # Detailed documentation
 │   ├── AUTHENTICATION.md      # Detailed auth flow documentation
 │   ├── ORGANIZATIONS.md       # Organization management guide
 │   ├── STARTUP_FLOW.md        # Server startup documentation
 │   └── FUTURE_FEATURES.md     # Planned features
+├── tests/                      # Test files
+│   ├── test_auth.py           # Authentication tests
+│   ├── test_organizations.py  # Organization management tests
+│   ├── test_release.sh        # Release testing script
+│   └── verify_card_members.py # Card member verification tests
 ├── venv/                       # Python virtual environment (gitignored)
-├── test_auth.py               # Authentication tests
-├── test_organizations.py      # Organization management tests
+├── __init__.py                # Package initialization
+├── __main__.py                # Entry point for `python -m trello_mcp_server`
+├── server.py                  # MCP server, tools, API client, auth logic
+├── auth.py                    # Standalone authentication CLI
 ├── requirements.txt           # Python dependencies
 ├── setup.sh                   # Setup automation script
 ├── pyproject.toml             # Python project metadata
@@ -30,11 +32,12 @@ trello-mcp-server/
 ## Key Files
 
 ### Core Implementation
-- `trello_mcp_server/server.py` - Central file containing:
+- `server.py` - Central file containing:
   - `TrelloAuth` class for credential management
   - `make_trello_request()` for API calls
   - MCP tool definitions and handlers
   - OAuth callback server for interactive auth
+- `auth.py` - Standalone authentication CLI
 
 ### Configuration
 - `.kiro/settings/mcp.json` - Local MCP server configuration (for development)
@@ -67,7 +70,6 @@ trello-mcp-server/
 ## Conventions
 
 ### Naming
-- Python package: `trello_mcp_server` (snake_case)
 - MCP server name: `trello` (lowercase)
 - Tool names: `list_boards`, `create_card` (snake_case)
 - Trello IDs: `board_id`, `list_id`, `card_id`, `org_id`
@@ -85,7 +87,7 @@ trello-mcp-server/
 - Use environment variables for CI/CD
 
 ### Testing
-- Test files at project root
+- Test files in `tests/` directory
 - Use descriptive test names
 - Test both success and error cases
 - Include interactive test scripts for manual verification

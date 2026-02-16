@@ -13,7 +13,7 @@ def verify_implementation():
     print("🔍 Verifying Card Members Implementation")
     print("=" * 60)
     
-    with open("trello_mcp_server/server.py", "r") as f:
+    with open("server.py", "r") as f:
         content = f.read()
     
     # Parse the Python file

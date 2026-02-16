@@ -38,16 +38,28 @@ This script will:
 1. Check git status and branch
 2. Prompt for version bump type (patch/minor/major) or custom version
 3. Update `pyproject.toml` with new version
-4. Add changelog entry and open editor
-5. Build the package
-6. Run package checks
-7. Commit changes and create git tag
-8. Optionally upload to TestPyPI or PyPI
-9. Optionally push to remote
+4. Auto-generate changelog from git commits (supports conventional commits)
+5. Show preview and optionally open editor for manual adjustments
+6. Build the package
+7. Run package checks
+8. Commit changes and create git tag
+9. Optionally upload to TestPyPI or PyPI
+10. Optionally push to remote
+
+The script automatically categorizes commits using conventional commit format:
+- `feat:` → Added section
+- `fix:` → Fixed section
+- `refactor:`, `perf:`, `style:`, `docs:`, `chore:` → Changed section
 
 ### Method 2: Quick Patch Release
 
-For quick bug fix releases:
+For quick bug fix releases with auto-generated changelog:
+
+```bash
+./quick-release.sh
+```
+
+Or with a custom description:
 
 ```bash
 ./quick-release.sh "Fix authentication timeout issue"
@@ -55,7 +67,7 @@ For quick bug fix releases:
 
 This automatically:
 - Increments patch version
-- Updates changelog with description
+- Generates changelog from commits (or uses provided description)
 - Builds package
 - Creates commit and tag
 
@@ -127,7 +139,24 @@ Follow [Semantic Versioning](https://semver.org/):
 
 ## Changelog Format
 
-Use [Keep a Changelog](https://keepachangelog.com/) format:
+The release scripts automatically generate changelog entries from git commits. For best results, use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Features (→ Added section)
+git commit -m "feat: add support for custom fields"
+git commit -m "feat(cards): add due date reminder tool"
+
+# Bug fixes (→ Fixed section)
+git commit -m "fix: resolve authentication timeout"
+git commit -m "fix(auth): handle expired tokens gracefully"
+
+# Other changes (→ Changed section)
+git commit -m "refactor: simplify API client code"
+git commit -m "docs: update authentication guide"
+git commit -m "chore: update dependencies"
+```
+
+Manual changelog format follows [Keep a Changelog](https://keepachangelog.com/):
 
 ```markdown
 ## [Version] - YYYY-MM-DD

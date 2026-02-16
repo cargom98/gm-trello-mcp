@@ -1130,7 +1130,7 @@ async def main():
             logger.error("The browser should have opened. If not, you can:")
             logger.error("1. Check if a browser window opened in the background")
             logger.error("2. Use manual authentication:")
-            logger.error("   python -m trello_mcp_server.auth --interactive")
+            logger.error("   python auth.py --interactive")
             logger.error("=" * 70)
             raise SystemExit(1)
         

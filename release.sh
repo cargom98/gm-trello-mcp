@@ -74,24 +74,96 @@ increment_version() {
     echo "$major.$minor.$patch"
 }
 
+# Function to get commits since last tag
+get_commits_since_last_tag() {
+    local last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+    if [ -z "$last_tag" ]; then
+        # No tags yet, get all commits
+        git log --pretty=format:"%s" --no-merges
+    else
+        # Get commits since last tag
+        git log "${last_tag}..HEAD" --pretty=format:"%s" --no-merges
+    fi
+}
+
+# Function to categorize commits
+categorize_commits() {
+    local commits="$1"
+    local added=""
+    local changed=""
+    local fixed=""
+    local other=""
+    
+    while IFS= read -r commit; do
+        # Skip empty lines
+        [ -z "$commit" ] && continue
+        
+        # Categorize by conventional commit prefix
+        if [[ $commit =~ ^feat(\(.*\))?:\ (.+) ]]; then
+            added="${added}- ${BASH_REMATCH[2]}\n"
+        elif [[ $commit =~ ^fix(\(.*\))?:\ (.+) ]]; then
+            fixed="${fixed}- ${BASH_REMATCH[2]}\n"
+        elif [[ $commit =~ ^(refactor|perf|style|docs|chore)(\(.*\))?:\ (.+) ]]; then
+            changed="${changed}- ${BASH_REMATCH[3]}\n"
+        else
+            # Non-conventional commits go to Changed
+            other="${other}- ${commit}\n"
+        fi
+    done <<< "$commits"
+    
+    # Combine changed and other
+    changed="${changed}${other}"
+    
+    echo -e "ADDED:${added}CHANGED:${changed}FIXED:${fixed}"
+}
+
 # Function to add changelog entry
 add_changelog_entry() {
     local version=$1
     local date=$(date +%Y-%m-%d)
     local temp_file=$(mktemp)
     
+    # Get commits since last tag
+    print_info "Gathering commits since last release..."
+    local commits=$(get_commits_since_last_tag)
+    
+    if [ -z "$commits" ]; then
+        print_warning "No commits found since last release"
+        commits="- Initial release"
+    fi
+    
+    # Categorize commits
+    local categorized=$(categorize_commits "$commits")
+    local added=$(echo "$categorized" | grep -A 1000 "ADDED:" | grep -B 1000 "CHANGED:" | grep -v "ADDED:" | grep -v "CHANGED:")
+    local changed=$(echo "$categorized" | grep -A 1000 "CHANGED:" | grep -B 1000 "FIXED:" | grep -v "CHANGED:" | grep -v "FIXED:")
+    local fixed=$(echo "$categorized" | grep -A 1000 "FIXED:" | grep -v "FIXED:")
+    
     # Create new entry
     echo -e "## [$version] - $date\n" > "$temp_file"
-    echo -e "### Added\n- \n" >> "$temp_file"
-    echo -e "### Changed\n- \n" >> "$temp_file"
-    echo -e "### Fixed\n- \n" >> "$temp_file"
+    
+    if [ -n "$added" ]; then
+        echo -e "### Added" >> "$temp_file"
+        echo -e "$added" >> "$temp_file"
+    fi
+    
+    if [ -n "$changed" ]; then
+        echo -e "### Changed" >> "$temp_file"
+        echo -e "$changed" >> "$temp_file"
+    fi
+    
+    if [ -n "$fixed" ]; then
+        echo -e "### Fixed" >> "$temp_file"
+        echo -e "$fixed" >> "$temp_file"
+    fi
+    
     echo "" >> "$temp_file"
     
     # Append existing changelog
     cat CHANGELOG.md >> "$temp_file"
     mv "$temp_file" CHANGELOG.md
     
-    print_info "Please edit CHANGELOG.md to add release notes"
+    print_success "Changelog generated from commits"
+    print_info "Review and edit CHANGELOG.md if needed"
 }
 
 # Main script
@@ -188,17 +260,29 @@ update_version "$new_version"
 print_success "Version updated to $new_version"
 
 # Step 2: Update CHANGELOG.md
-print_info "Updating CHANGELOG.md..."
+print_info "Generating CHANGELOG.md from commits..."
 add_changelog_entry "$new_version"
-print_success "Changelog entry added"
+print_success "Changelog generated"
+
+# Show preview
+echo ""
+print_info "Changelog preview:"
+echo "─────────────────────────────────────────────────────────────"
+head -n 20 CHANGELOG.md
+echo "─────────────────────────────────────────────────────────────"
+echo ""
 
 # Open editor for changelog
-if command -v ${EDITOR:-nano} &> /dev/null; then
-    print_info "Opening CHANGELOG.md for editing..."
-    ${EDITOR:-nano} CHANGELOG.md
-else
-    print_warning "No editor found. Please manually edit CHANGELOG.md"
-    read -p "Press Enter when done editing..."
+read -p "Edit CHANGELOG.md before continuing? (y/N) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if command -v ${EDITOR:-nano} &> /dev/null; then
+        print_info "Opening CHANGELOG.md for editing..."
+        ${EDITOR:-nano} CHANGELOG.md
+    else
+        print_warning "No editor found. Please manually edit CHANGELOG.md"
+        read -p "Press Enter when done editing..."
+    fi
 fi
 
 # Step 3: Clean previous builds

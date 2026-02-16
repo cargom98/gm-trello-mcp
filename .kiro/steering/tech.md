@@ -15,12 +15,11 @@
 - Token caching in `~/.trello_mcp_token.json` with 600 permissions
 
 ## Project Structure
-- `trello_mcp_server/` - Main package
-  - `server.py` - MCP server implementation, tool handlers, API client
-  - `auth.py` - Standalone authentication CLI
-  - `__main__.py` - Package entry point
+- `server.py` - MCP server implementation, tool handlers, API client
+- `auth.py` - Standalone authentication CLI
+- `__main__.py` - Package entry point
 - `docs/` - Detailed documentation
-- Test files at root level
+- `tests/` - Test files
 
 ## Common Commands
 
@@ -43,20 +42,20 @@ pip install -r requirements.txt
 python -m trello_mcp_server
 
 # Authenticate interactively
-python -m trello_mcp_server.auth --interactive
+python auth.py --interactive
 
 # Authenticate manually
-python -m trello_mcp_server.auth --manual
+python auth.py --manual
 
 # Check auth status
-python -m trello_mcp_server.auth --check
+python auth.py --check
 
 # Run tests
-python -m pytest
+python -m pytest tests/
 
 # Test organization tools
-python test_organizations.py
-python test_organizations.py --org-id myteam
+python tests/test_organizations.py
+python tests/test_organizations.py --org-id myteam
 ```
 
 ### MCP Configuration

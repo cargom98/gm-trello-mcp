@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 # Import from the server module
-from trello_mcp_server.server import TrelloAuth, TOKEN_CACHE_FILE, logger
+from server import TrelloAuth, TOKEN_CACHE_FILE, logger
 
 
 def main():
@@ -19,16 +19,16 @@ def main():
         epilog="""
 Examples:
   # Automatic authentication (recommended)
-  python -m trello_mcp_server.auth --interactive
+  python auth.py --interactive
   
   # Manual authentication
-  python -m trello_mcp_server.auth --manual
+  python auth.py --manual
   
   # Check authentication status
-  python -m trello_mcp_server.auth --check
+  python auth.py --check
   
   # Set credentials directly
-  python -m trello_mcp_server.auth --set-key YOUR_KEY --set-token YOUR_TOKEN
+  python auth.py --set-key YOUR_KEY --set-token YOUR_TOKEN
         """
     )
     
@@ -84,7 +84,7 @@ Examples:
         else:
             print("✗ Not authenticated")
             print("\nTo authenticate, run:")
-            print("  python -m trello_mcp_server.auth --interactive")
+            print("  python auth.py --interactive")
             return 1
     
     # Set credentials directly
@@ -152,10 +152,10 @@ Examples:
             print("The authorization timed out or was cancelled.")
             print()
             print("Try again with:")
-            print("  python -m trello_mcp_server.auth --interactive")
+            print("  python auth.py --interactive")
             print()
             print("Or use manual authentication:")
-            print("  python -m trello_mcp_server.auth --manual")
+            print("  python auth.py --manual")
             print("=" * 70)
             return 1
     
@@ -222,7 +222,7 @@ Examples:
         parser.print_help()
         print()
         print("Quick start:")
-        print("  python -m trello_mcp_server.auth --interactive")
+        print("  python auth.py --interactive")
         return 1
     
     return 0

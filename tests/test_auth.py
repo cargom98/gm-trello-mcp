@@ -7,7 +7,9 @@ import sys
 os.environ["TRELLO_API_KEY"] = "e9a94d46df7b6a1bb3bd0df25d125b47"
 
 # Import after setting env var
-from trello_mcp_server.server import auth
+# Add parent directory to path to import from root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from server import auth
 
 print("=" * 70)
 print("AUTHENTICATION TEST")
