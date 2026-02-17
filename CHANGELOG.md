@@ -1,3 +1,8 @@
+## [2.0.1] - 2026-02-16
+
+### Fixed
+- use git status --porcelain for more reliable change detection
+
 ## [1.2.0] - 2026-02-16
 
 ### Added
