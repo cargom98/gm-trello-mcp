@@ -1,3 +1,8 @@
+## [2.0.2] - 2026-02-16
+
+### Fixed
+- Fix entry point import for flat layout
+
 ## [2.0.1] - 2026-02-16
 
 ### Fixed
