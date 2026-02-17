@@ -5,6 +5,7 @@ import logging
 import socket
 import webbrowser
 import secrets
+import re
 from pathlib import Path
 from typing import Any, Optional
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -54,7 +55,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
             # Validate state parameter for CSRF protection
             received_state = params.get('state', [None])[0]
             if received_state != _oauth_state:
-                logger.error(f"OAuth state mismatch. Expected: {_oauth_state}, Got: {received_state}")
+                logger.error("OAuth state mismatch - possible CSRF attack")
                 self.send_response(400)
                 self.send_header('Content-type', 'text/html')
                 self.end_headers()
@@ -181,7 +182,6 @@ class TrelloAuth:
         """Generate authorization URL for getting a token."""
         if return_url:
             # Validate return_url for security - only allow localhost
-            from urllib.parse import urlparse
             parsed = urlparse(return_url)
             if parsed.hostname not in ['localhost', '127.0.0.1', None]:
                 raise ValueError("Return URL must be localhost for security")
@@ -291,8 +291,6 @@ def validate_trello_id(id_value: str, id_type: str = "ID") -> str:
     Raises:
         ValueError: If ID format is invalid
     """
-    import re
-    
     if not id_value:
         raise ValueError(f"{id_type} cannot be empty")
     
