@@ -1,3 +1,12 @@
+## [2.0.5] - 2026-02-17
+
+### Changed
+- Add security audit documentation and summary of improvements
+- Address code review feedback: move imports to top, avoid logging OAuth state
+- Update dependencies to secure versions: mcp>=1.26.0, requests>=2.32.0
+- Security improvements: Remove hardcoded credentials, add CSRF protection, improve logging security, add timeouts and input validation
+- Initial plan
+
 ## [2.0.4] - 2026-02-16
 
 ### Fixed
