@@ -1,3 +1,8 @@
+## [2.0.4] - 2026-02-16
+
+### Fixed
+- Add synchronous entry point wrapper
+
 ## [2.0.3] - 2026-02-16
 
 ### Fixed
