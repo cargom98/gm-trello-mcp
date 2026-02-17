@@ -1,9 +1,9 @@
 """Main entry point for the Trello MCP server."""
 import asyncio
-from .server import main as server_main
+from server import main as server_main
 
 def main():
-    """Entry point for the package when run as python -m trello_mcp_server."""
+    """Entry point for the package."""
     asyncio.run(server_main())
 
 if __name__ == "__main__":
