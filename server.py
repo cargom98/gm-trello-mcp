@@ -4,6 +4,7 @@ import json
 import logging
 import socket
 import webbrowser
+import secrets
 from pathlib import Path
 from typing import Any, Optional
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -26,6 +27,7 @@ app = Server("trello-mcp-server")
 # Global variable to store token from callback
 _callback_token = None
 _callback_event = None
+_oauth_state = None
 
 
 class ReuseAddrHTTPServer(HTTPServer):
@@ -42,13 +44,33 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Handle both initial request and callback with token."""
-        global _callback_token, _callback_event
+        global _callback_token, _callback_event, _oauth_state
 
         parsed = urlparse(self.path)
 
         # Check if token is in query params (from JavaScript callback)
         params = parse_qs(parsed.query)
         if 'token' in params:
+            # Validate state parameter for CSRF protection
+            received_state = params.get('state', [None])[0]
+            if received_state != _oauth_state:
+                logger.error(f"OAuth state mismatch. Expected: {_oauth_state}, Got: {received_state}")
+                self.send_response(400)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                html = """
+                <html>
+                <head><title>Trello Authorization - Error</title></head>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+                    <h2 style="color: #c9372c;">✗ Authorization Failed</h2>
+                    <p>Invalid authorization request. This may be a CSRF attack attempt.</p>
+                    <p>Please close this window and try authenticating again.</p>
+                </body>
+                </html>
+                """
+                self.wfile.write(html.encode())
+                return
+            
             _callback_token = params['token'][0]
             if _callback_event:
                 _callback_event.set()
@@ -74,7 +96,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        html = """
+        html = f"""
         <html>
         <head><title>Trello Authorization</title></head>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
@@ -86,21 +108,21 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
                 const params = new URLSearchParams(hash);
                 const token = params.get('token');
 
-                if (token) {
-                    // Send token to server via query param
-                    fetch('/?token=' + encodeURIComponent(token))
+                if (token) {{
+                    // Send token to server via query param with state for CSRF protection
+                    fetch('/?token=' + encodeURIComponent(token) + '&state=' + encodeURIComponent('{_oauth_state}'))
                         .then(response => response.text())
-                        .then(html => {
+                        .then(html => {{
                             document.open();
                             document.write(html);
                             document.close();
-                        })
-                        .catch(err => {
+                        }})
+                        .catch(err => {{
                             document.body.innerHTML = '<h2 style="color: #c9372c;">✗ Error</h2><p>Failed to send token to server: ' + err.message + '</p>';
-                        });
-                } else {
+                        }});
+                }} else {{
                     document.body.innerHTML = '<h2 style="color: #c9372c;">✗ No Token Found</h2><p>No token was found in the URL. Please try the authorization process again.</p>';
-                }
+                }}
             </script>
         </body>
         </html>
@@ -134,11 +156,17 @@ class TrelloAuth:
                 logger.warning(f"Failed to load cached token: {e}")
     
     def _save_token(self, api_key: str, token: str):
-        """Save token to cache file."""
+        """Save token to cache file with secure permissions."""
         try:
-            with open(TOKEN_CACHE_FILE, 'w') as f:
+            # Create file with secure permissions atomically
+            # Use os.open to set permissions before writing
+            fd = os.open(
+                TOKEN_CACHE_FILE, 
+                os.O_CREAT | os.O_WRONLY | os.O_TRUNC,
+                0o600  # Secure permissions from creation
+            )
+            with os.fdopen(fd, 'w') as f:
                 json.dump({'api_key': api_key, 'token': token}, f)
-            TOKEN_CACHE_FILE.chmod(0o600)  # Secure file permissions
             logger.info("Saved Trello token to cache")
         except Exception as e:
             logger.warning(f"Failed to save token: {e}")
@@ -152,6 +180,12 @@ class TrelloAuth:
     def get_auth_url(self, api_key: str, app_name: str = "Trello MCP Server", return_url: str = None) -> str:
         """Generate authorization URL for getting a token."""
         if return_url:
+            # Validate return_url for security - only allow localhost
+            from urllib.parse import urlparse
+            parsed = urlparse(return_url)
+            if parsed.hostname not in ['localhost', '127.0.0.1', None]:
+                raise ValueError("Return URL must be localhost for security")
+            
             return (
                 f"https://trello.com/1/authorize?"
                 f"expiration=never&"
@@ -171,10 +205,12 @@ class TrelloAuth:
     
     def authorize_interactive(self, api_key: str, app_name: str = "Trello MCP Server", port: int = 8765) -> Optional[str]:
         """Start OAuth flow with automatic browser opening and token capture."""
-        global _callback_token, _callback_event
+        global _callback_token, _callback_event, _oauth_state
         
         _callback_token = None
         _callback_event = threading.Event()
+        # Generate CSRF protection state parameter
+        _oauth_state = secrets.token_urlsafe(32)
         
         server = None
         try:
@@ -207,7 +243,7 @@ class TrelloAuth:
                 logger.info("Received authorization callback")
                 token = _callback_token
                 if token:
-                    logger.info(f"Token received: {token[:16]}...")
+                    logger.info(f"Token received: {token[:8]}...")
                     self.set_credentials(api_key, token)
                     return token
                 else:
@@ -242,6 +278,31 @@ class TrelloAuth:
 
 auth = TrelloAuth()
 
+def validate_trello_id(id_value: str, id_type: str = "ID") -> str:
+    """Validate Trello ID format for security.
+    
+    Args:
+        id_value: The ID to validate
+        id_type: Type of ID for error messages (e.g., "board ID", "card ID")
+    
+    Returns:
+        The validated ID
+        
+    Raises:
+        ValueError: If ID format is invalid
+    """
+    import re
+    
+    if not id_value:
+        raise ValueError(f"{id_type} cannot be empty")
+    
+    # Trello IDs are 24-character hexadecimal strings or shorter alphanumeric strings
+    # Allow alphanumeric characters and underscores, reasonable length
+    if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', id_value):
+        raise ValueError(f"Invalid {id_type} format. Must be alphanumeric (1-64 characters)")
+    
+    return id_value
+
 def make_trello_request(method: str, endpoint: str, params: dict = None, data: dict = None) -> dict:
     """Make a request to the Trello API."""
     if not auth.is_authenticated():
@@ -260,7 +321,15 @@ def make_trello_request(method: str, endpoint: str, params: dict = None, data: d
     if params:
         auth_params.update(params)
     
-    response = requests.request(method, url, params=auth_params, json=data)
+    # Add timeout and explicit certificate verification for security
+    response = requests.request(
+        method, 
+        url, 
+        params=auth_params, 
+        json=data,
+        timeout=30,  # 30 second timeout
+        verify=True  # Explicit SSL certificate verification
+    )
     response.raise_for_status()
     return response.json()
 
@@ -732,6 +801,23 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: Any) -> list[TextContent]:
     """Handle tool calls."""
     try:
+        # Validate IDs for security before processing
+        id_fields = {
+            'board_id': 'Board ID',
+            'list_id': 'List ID', 
+            'card_id': 'Card ID',
+            'member_id': 'Member ID',
+            'organization_id': 'Organization ID',
+            'label_id': 'Label ID'
+        }
+        
+        for field, field_name in id_fields.items():
+            if field in arguments:
+                try:
+                    arguments[field] = validate_trello_id(arguments[field], field_name)
+                except ValueError as e:
+                    return [TextContent(type="text", text=f"Validation Error: {str(e)}")]
+        
         if name == "list_boards":
             boards = make_trello_request("GET", "/members/me/boards")
             result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
@@ -1069,11 +1155,34 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except requests.exceptions.HTTPError as e:
-        logger.error(f"Trello API error: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        # Log detailed error internally but return sanitized message to user
+        logger.error(f"Trello API error for tool {name}: {e}")
+        logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+        # Return generic error without exposing internal details
+        status_code = e.response.status_code if hasattr(e, 'response') else 'unknown'
+        if status_code == 401:
+            return [TextContent(type="text", text="Error: Authentication failed. Please check your credentials.")]
+        elif status_code == 403:
+            return [TextContent(type="text", text="Error: Permission denied. You don't have access to this resource.")]
+        elif status_code == 404:
+            return [TextContent(type="text", text="Error: Resource not found. Please check the ID.")]
+        elif status_code == 429:
+            return [TextContent(type="text", text="Error: Rate limit exceeded. Please try again later.")]
+        else:
+            return [TextContent(type="text", text=f"Error: API request failed (status {status_code}).")]
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout executing tool {name}")
+        return [TextContent(type="text", text="Error: Request timed out. Please try again.")]
+    except requests.exceptions.ConnectionError:
+        logger.error(f"Connection error executing tool {name}")
+        return [TextContent(type="text", text="Error: Cannot connect to Trello API. Please check your network.")]
     except Exception as e:
+        # Log full error internally
         logger.error(f"Error executing tool {name}: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        import traceback
+        logger.error(traceback.format_exc())
+        # Return generic error message
+        return [TextContent(type="text", text=f"Error: An unexpected error occurred. Please try again.")]
 
 
 
@@ -1083,9 +1192,9 @@ async def main():
     logger.info("=" * 70)
     logger.info("TRELLO MCP SERVER STARTING")
     logger.info("=" * 70)
-    logger.info(f"API Key from env: {os.getenv('TRELLO_API_KEY', 'NOT SET')}")
-    logger.info(f"Token from env: {os.getenv('TRELLO_TOKEN', 'NOT SET')}")
-    logger.info(f"Auth object API Key: {auth.api_key}")
+    logger.info(f"API Key from env: {'SET' if os.getenv('TRELLO_API_KEY') else 'NOT SET'}")
+    logger.info(f"Token from env: {'SET' if os.getenv('TRELLO_TOKEN') else 'NOT SET'}")
+    logger.info(f"Auth object API Key: {'SET' if auth.api_key else 'NOT SET'}")
     logger.info(f"Auth object Token: {'SET' if auth.token else 'NOT SET'}")
     logger.info(f"Is authenticated: {auth.is_authenticated()}")
     logger.info("=" * 70)
@@ -1112,7 +1221,7 @@ async def main():
             logger.error("=" * 70)
             raise SystemExit(1)
         
-        logger.info(f"Found API key: {api_key[:8]}...")
+        logger.info(f"Found API key: {api_key[:4]}...")
         logger.info("Opening browser for authorization...")
         logger.info("Please click 'Allow' in your browser to authorize the app.")
         logger.info("")

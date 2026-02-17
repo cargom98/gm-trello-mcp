@@ -3,8 +3,9 @@
 import os
 import sys
 
-# Set the API key
-os.environ["TRELLO_API_KEY"] = "e9a94d46df7b6a1bb3bd0df25d125b47"
+# Set the API key from environment or use placeholder
+if not os.getenv("TRELLO_API_KEY"):
+    os.environ["TRELLO_API_KEY"] = "test_api_key_placeholder"
 
 # Import after setting env var
 # Add parent directory to path to import from root

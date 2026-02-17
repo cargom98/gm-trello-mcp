@@ -26,9 +26,6 @@ Examples:
   
   # Check authentication status
   python auth.py --check
-  
-  # Set credentials directly
-  python auth.py --set-key YOUR_KEY --set-token YOUR_TOKEN
         """
     )
     
@@ -51,18 +48,6 @@ Examples:
     )
     
     parser.add_argument(
-        '--set-key',
-        type=str,
-        help='Set API key directly'
-    )
-    
-    parser.add_argument(
-        '--set-token',
-        type=str,
-        help='Set token directly'
-    )
-    
-    parser.add_argument(
         '--port',
         type=int,
         default=8765,
@@ -78,7 +63,7 @@ Examples:
     if args.check:
         if auth.is_authenticated():
             api_key, _ = auth.get_credentials()
-            print(f"✓ Authenticated with API key: {api_key[:8]}...")
+            print(f"✓ Authenticated with API key: {api_key[:4]}...")
             print(f"  Token cache: {TOKEN_CACHE_FILE}")
             return 0
         else:
@@ -86,17 +71,6 @@ Examples:
             print("\nTo authenticate, run:")
             print("  python auth.py --interactive")
             return 1
-    
-    # Set credentials directly
-    if args.set_key and args.set_token:
-        auth.set_credentials(args.set_key, args.set_token)
-        print("✓ Credentials saved successfully!")
-        print(f"  API Key: {args.set_key[:8]}...")
-        print(f"  Token cache: {TOKEN_CACHE_FILE}")
-        return 0
-    elif args.set_key or args.set_token:
-        print("✗ Error: Both --set-key and --set-token are required")
-        return 1
     
     # Interactive authentication
     if args.interactive:
@@ -137,8 +111,8 @@ Examples:
             print("=" * 70)
             print("✓ AUTHENTICATION SUCCESSFUL!")
             print("=" * 70)
-            print(f"  API Key: {api_key[:8]}...")
-            print(f"  Token: {token[:16]}...")
+            print(f"  API Key: {api_key[:4]}...")
+            print(f"  Token: {token[:8]}...")
             print(f"  Saved to: {TOKEN_CACHE_FILE}")
             print()
             print("You can now start the Trello MCP server.")
@@ -209,8 +183,8 @@ Examples:
         print("=" * 70)
         print("✓ AUTHENTICATION SUCCESSFUL!")
         print("=" * 70)
-        print(f"  API Key: {api_key[:8]}...")
-        print(f"  Token: {token[:16]}...")
+        print(f"  API Key: {api_key[:4]}...")
+        print(f"  Token: {token[:8]}...")
         print(f"  Saved to: {TOKEN_CACHE_FILE}")
         print()
         print("You can now start the Trello MCP server.")
@@ -218,7 +192,7 @@ Examples:
         return 0
     
     # No action specified
-    if not any([args.interactive, args.manual, args.check, args.set_key]):
+    if not any([args.interactive, args.manual, args.check]):
         parser.print_help()
         print()
         print("Quick start:")

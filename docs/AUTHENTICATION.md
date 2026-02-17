@@ -95,7 +95,7 @@ Use the check_auth tool (no parameters needed)
 
 You should see:
 ```
-✓ Authenticated with API key: e9a94d46...
+✓ Authenticated with API key: YOUR_KEY...
 ```
 
 ### Step 6: Start Using Trello Tools
@@ -265,16 +265,16 @@ The server will automatically use these if no cached token is found.
 Here's a complete example conversation with Kiro:
 
 ```
-You: Use get_auth_url with my API key: e9a94d46df7b6a1bb3bd0df25d125b47
+You: Use get_auth_url with my API key: YOUR_API_KEY_HERE
 
 Kiro: Visit this URL to authorize the app:
-https://trello.com/1/authorize?expiration=never&name=Trello%20MCP%20Server&scope=read,write&response_type=token&key=e9a94d46df7b6a1bb3bd0df25d125b47
+https://trello.com/1/authorize?expiration=never&name=Trello%20MCP%20Server&scope=read,write&response_type=token&key=YOUR_API_KEY_HERE
 
 After authorizing, you'll receive a token. Use the 'set_token' tool to save it.
 
 You: [Visit URL in browser, click Allow, copy token]
-     Use set_token with api_key: e9a94d46df7b6a1bb3bd0df25d125b47 
-     and token: ATTA1234567890abcdef...
+     Use set_token with api_key: YOUR_API_KEY_HERE 
+     and token: YOUR_TOKEN_HERE
 
 Kiro: ✓ Credentials saved successfully! You can now use other Trello tools.
 
