@@ -1,3 +1,8 @@
+## [2.0.3] - 2026-02-16
+
+### Fixed
+- Fix entry point to use server:main
+
 ## [2.0.2] - 2026-02-16
 
 ### Fixed
