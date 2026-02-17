@@ -32,7 +32,7 @@ Homepage = "https://github.com/cargom98/gm-trello-mcp"
 Repository = "https://github.com/cargom98/gm-trello-mcp"
 
 [project.scripts]
-trello-mcp-server = "server:main"
+trello-mcp-server = "server:run"
 
 [tool.setuptools]
 py-modules = ["server", "auth"]

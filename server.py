@@ -1149,3 +1149,9 @@ async def main():
             write_stream,
             app.create_initialization_options()
         )
+
+
+def run():
+    """Synchronous entry point for the CLI."""
+    import asyncio
+    asyncio.run(main())
