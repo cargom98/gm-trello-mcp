@@ -180,8 +180,9 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
 fi
 
 # Check for uncommitted changes
-if ! git diff-index --quiet HEAD --; then
+if [[ -n $(git status --porcelain) ]]; then
     print_error "You have uncommitted changes. Please commit or stash them first."
+    git status --short
     exit 1
 fi
 
