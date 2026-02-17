@@ -23,8 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "mcp>=1.0.0",
-    "requests>=2.31.0",
+    "mcp>=1.26.0",
+    "requests>=2.32.0",
 ]
 
 [project.urls]
