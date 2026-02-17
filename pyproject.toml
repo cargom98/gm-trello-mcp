@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "trello-mcp-server"
-version = "1.2.0"
+version = "2.0.0"
 description = "Model Context Protocol server for Trello API integration"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -32,4 +32,7 @@ Homepage = "https://github.com/cargom98/gm-trello-mcp"
 Repository = "https://github.com/cargom98/gm-trello-mcp"
 
 [project.scripts]
-trello_mcp_server = "trello_mcp_server.__main__:main"
+trello-mcp-server = "__main__:main"
+
+[tool.setuptools]
+py-modules = ["server", "auth", "__main__", "__init__"]
