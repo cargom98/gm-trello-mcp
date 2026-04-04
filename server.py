@@ -7,13 +7,12 @@ import webbrowser
 import secrets
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import threading
-from mcp.server import Server
-from mcp.types import Tool, TextContent
-import mcp.server.stdio
+import functools
+from mcp.server.fastmcp import FastMCP
 import requests
 
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +22,7 @@ logger = logging.getLogger("trello-mcp-server")
 TRELLO_API_BASE = "https://api.trello.com/1"
 TOKEN_CACHE_FILE = Path.home() / ".trello_mcp_token.json"
 
-app = Server("trello-mcp-server")
+mcp_server = FastMCP("trello-mcp-server")
 
 # Global variable to store token from callback
 _callback_token = None
@@ -331,857 +330,375 @@ def make_trello_request(method: str, endpoint: str, params: dict = None, data: d
     response.raise_for_status()
     return response.json()
 
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    """List available Trello tools."""
-    return [
-        Tool(
-            name="list_boards",
-            description="List all boards accessible to the authenticated user",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-            }
-        ),
-        Tool(
-            name="get_board",
-            description="Get details about a specific board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    }
-                },
-                "required": ["board_id"]
-            }
-        ),
-        Tool(
-            name="list_board_lists",
-            description="Get all lists on a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    }
-                },
-                "required": ["board_id"]
-            }
-        ),
-        Tool(
-            name="list_board_cards",
-            description="Get all cards on a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    }
-                },
-                "required": ["board_id"]
-            }
-        ),
-        Tool(
-            name="create_card",
-            description="Create a new card on a list",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "list_id": {
-                        "type": "string",
-                        "description": "The ID of the list to create the card in"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "The name/title of the card"
-                    },
-                    "desc": {
-                        "type": "string",
-                        "description": "The description of the card (optional)"
-                    }
-                },
-                "required": ["list_id", "name"]
-            }
-        ),
-        Tool(
-            name="update_card",
-            description="Update a card's properties",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card to update"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "New name for the card (optional)"
-                    },
-                    "desc": {
-                        "type": "string",
-                        "description": "New description for the card (optional)"
-                    },
-                    "list_id": {
-                        "type": "string",
-                        "description": "Move card to this list ID (optional)"
-                    }
-                },
-                "required": ["card_id"]
-            }
-        ),
-        Tool(
-            name="get_card",
-            description="Get details about a specific card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    }
-                },
-                "required": ["card_id"]
-            }
-        ),
-        Tool(
-            name="create_list",
-            description="Create a new list on a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board to create the list on"
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "The name of the list"
-                    },
-                    "pos": {
-                        "type": "string",
-                        "description": "Position of the list: 'top', 'bottom', or a positive number (optional, defaults to 'bottom')"
-                    }
-                },
-                "required": ["board_id", "name"]
-            }
-        ),
-        Tool(
-            name="list_organizations",
-            description="List all organizations/workspaces the authenticated user belongs to",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-            }
-        ),
-        Tool(
-            name="get_organization",
-            description="Get details about a specific organization/workspace",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {
-                        "type": "string",
-                        "description": "The ID or name of the organization"
-                    }
-                },
-                "required": ["org_id"]
-            }
-        ),
-        Tool(
-            name="list_organization_boards",
-            description="Get all boards in an organization/workspace",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {
-                        "type": "string",
-                        "description": "The ID or name of the organization"
-                    }
-                },
-                "required": ["org_id"]
-            }
-        ),
-        Tool(
-            name="list_organization_members",
-            description="Get all members of an organization/workspace",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {
-                        "type": "string",
-                        "description": "The ID or name of the organization"
-                    }
-                },
-                "required": ["org_id"]
-            }
-        ),
-        Tool(
-            name="add_organization_member",
-            description="Add a member to an organization/workspace",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {
-                        "type": "string",
-                        "description": "The ID or name of the organization"
-                    },
-                    "email": {
-                        "type": "string",
-                        "description": "Email address of the member to add"
-                    },
-                    "full_name": {
-                        "type": "string",
-                        "description": "Full name of the member (optional)"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "Member type: 'normal' or 'admin' (optional, defaults to 'normal')"
-                    }
-                },
-                "required": ["org_id", "email"]
-            }
-        ),
-        Tool(
-            name="remove_organization_member",
-            description="Remove a member from an organization/workspace",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "org_id": {
-                        "type": "string",
-                        "description": "The ID or name of the organization"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to remove"
-                    }
-                },
-                "required": ["org_id", "member_id"]
-            }
-        ),
-        Tool(
-            name="add_card_label",
-            description="Add a label to a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    },
-                    "label_id": {
-                        "type": "string",
-                        "description": "The ID of the label to add"
-                    }
-                },
-                "required": ["card_id", "label_id"]
-            }
-        ),
-        Tool(
-            name="remove_card_label",
-            description="Remove a label from a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    },
-                    "label_id": {
-                        "type": "string",
-                        "description": "The ID of the label to remove"
-                    }
-                },
-                "required": ["card_id", "label_id"]
-            }
-        ),
-        Tool(
-            name="list_card_labels",
-            description="List all labels on a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    }
-                },
-                "required": ["card_id"]
-            }
-        ),
-        Tool(
-            name="list_board_labels",
-            description="List all available labels on a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    }
-                },
-                "required": ["board_id"]
-            }
-        ),
-        Tool(
-            name="filter_cards_by_label",
-            description="Filter cards on a board by a specific label",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    },
-                    "label_id": {
-                        "type": "string",
-                        "description": "The ID of the label to filter by"
-                    }
-                },
-                "required": ["board_id", "label_id"]
-            }
-        ),
-        Tool(
-            name="list_board_members",
-            description="List all members of a board with their permission levels",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    }
-                },
-                "required": ["board_id"]
-            }
-        ),
-        Tool(
-            name="add_board_member",
-            description="Add an existing Trello user to a board with specified permission level",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to add"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "Permission level: 'admin', 'normal', or 'observer' (optional, defaults to 'normal')"
-                    }
-                },
-                "required": ["board_id", "member_id"]
-            }
-        ),
-        Tool(
-            name="remove_board_member",
-            description="Remove a member from a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to remove"
-                    }
-                },
-                "required": ["board_id", "member_id"]
-            }
-        ),
-        Tool(
-            name="update_board_member",
-            description="Update a member's permission level on a board",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to update"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "New permission level: 'admin', 'normal', or 'observer'"
-                    }
-                },
-                "required": ["board_id", "member_id", "type"]
-            }
-        ),
-        Tool(
-            name="invite_board_member",
-            description="Invite a new member to a board via email address",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "board_id": {
-                        "type": "string",
-                        "description": "The ID of the board"
-                    },
-                    "email": {
-                        "type": "string",
-                        "description": "Email address of the person to invite"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "Permission level: 'admin', 'normal', or 'observer' (optional, defaults to 'normal')"
-                    }
-                },
-                "required": ["board_id", "email"]
-            }
-        ),
-        Tool(
-            name="add_card_member",
-            description="Add a member to a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to add"
-                    }
-                },
-                "required": ["card_id", "member_id"]
-            }
-        ),
-        Tool(
-            name="remove_card_member",
-            description="Remove a member from a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    },
-                    "member_id": {
-                        "type": "string",
-                        "description": "The ID of the member to remove"
-                    }
-                },
-                "required": ["card_id", "member_id"]
-            }
-        ),
-        Tool(
-            name="list_card_members",
-            description="List all members assigned to a card",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "card_id": {
-                        "type": "string",
-                        "description": "The ID of the card"
-                    }
-                },
-                "required": ["card_id"]
-            }
-        )
-    ]
 
-@app.call_tool()
-async def call_tool(name: str, arguments: Any) -> list[TextContent]:
-    """Handle tool calls."""
-    try:
-        # Validate IDs for security before processing
-        id_fields = {
-            'board_id': 'Board ID',
-            'list_id': 'List ID', 
-            'card_id': 'Card ID',
-            'member_id': 'Member ID',
-            'organization_id': 'Organization ID',
-            'label_id': 'Label ID'
-        }
-        
-        for field, field_name in id_fields.items():
-            if field in arguments:
-                try:
-                    arguments[field] = validate_trello_id(arguments[field], field_name)
-                except ValueError as e:
-                    return [TextContent(type="text", text=f"Validation Error: {str(e)}")]
-        
-        if name == "list_boards":
-            boards = make_trello_request("GET", "/members/me/boards")
-            result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
-            return [TextContent(type="text", text=f"Your Trello Boards:\n{result}")]
-
-        elif name == "get_board":
-            board = make_trello_request("GET", f"/boards/{arguments['board_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Board: {board['name']}\nID: {board['id']}\nURL: {board['url']}\nDescription: {board.get('desc', 'N/A')}"
-            )]
-
-        elif name == "list_board_lists":
-            lists = make_trello_request("GET", f"/boards/{arguments['board_id']}/lists")
-            result = "\n".join([f"- {lst['name']} (ID: {lst['id']})" for lst in lists])
-            return [TextContent(type="text", text=f"Lists on board:\n{result}")]
-
-        elif name == "list_board_cards":
-            cards = make_trello_request("GET", f"/boards/{arguments['board_id']}/cards")
-            result = "\n".join([f"- {card['name']} (ID: {card['id']}, List: {card['idList']})" for card in cards])
-            return [TextContent(type="text", text=f"Cards on board:\n{result}")]
-
-        elif name == "list_board_members":
-            board_id = arguments["board_id"]
-            members = make_trello_request("GET", f"/boards/{board_id}/members")
-            
-            # Format response with member details (name, username, ID, permission)
-            result = "\n".join([
-                f"- {member['fullName']} (@{member['username']}, ID: {member['id']}, Permission: {member.get('memberType', 'normal')})"
-                for member in members
-            ])
-            return [TextContent(type="text", text=f"Board Members:\n{result}")]
-
-        elif name == "add_board_member":
-            board_id = arguments["board_id"]
-            member_id = arguments["member_id"]
-            member_type = arguments.get("type", "normal")
-            
-            # Build query parameters with type
-            params = {"type": member_type}
-            
-            # Call make_trello_request with PUT method
-            result = make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
-            
-            # Get member details for confirmation
-            member = make_trello_request("GET", f"/members/{member_id}")
-            
-            return [TextContent(
-                type="text",
-                text=f"Added member to board: {member['fullName']} (@{member['username']})\nPermission: {member_type}"
-            )]
-
-        elif name == "remove_board_member":
-            board_id = arguments["board_id"]
-            member_id = arguments["member_id"]
-            
-            # Call make_trello_request with DELETE method
-            make_trello_request("DELETE", f"/boards/{board_id}/members/{member_id}")
-            
-            return [TextContent(
-                type="text",
-                text=f"Removed member {member_id} from board"
-            )]
-
-        elif name == "update_board_member":
-            board_id = arguments["board_id"]
-            member_id = arguments["member_id"]
-            member_type = arguments["type"]
-            
-            # Validate type is one of: "admin", "normal", "observer"
-            valid_permissions = ["admin", "normal", "observer"]
-            if member_type not in valid_permissions:
-                return [TextContent(
-                    type="text",
-                    text=f"Error: Invalid permission type. Must be one of: {', '.join(valid_permissions)}"
-                )]
-            
-            # Build query parameters with type
-            params = {"type": member_type}
-            
-            # Call make_trello_request with PUT method
-            make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
-            
-            # Get member details for confirmation
-            member = make_trello_request("GET", f"/members/{member_id}")
-            
-            return [TextContent(
-                type="text",
-                text=f"Updated member permission: {member['fullName']} (@{member['username']})\nNew permission: {member_type}"
-            )]
-
-        elif name == "invite_board_member":
-            board_id = arguments["board_id"]
-            email = arguments["email"]
-            member_type = arguments.get("type", "normal")
-            
-            # Build query parameters with email and type
-            params = {"email": email, "type": member_type}
-            
-            # Call make_trello_request with PUT method
-            make_trello_request("PUT", f"/boards/{board_id}/members", params=params)
-            
-            return [TextContent(
-                type="text",
-                text=f"Invited {email} to board\nPermission: {member_type}"
-            )]
-
-        elif name == "create_card":
-            data = {
-                "idList": arguments["list_id"],
-                "name": arguments["name"]
-            }
-            if "desc" in arguments:
-                data["desc"] = arguments["desc"]
-
-            card = make_trello_request("POST", "/cards", data=data)
-            return [TextContent(
-                type="text",
-                text=f"Created card: {card['name']}\nID: {card['id']}\nURL: {card['url']}"
-            )]
-
-        elif name == "update_card":
-            data = {}
-            if "name" in arguments:
-                data["name"] = arguments["name"]
-            if "desc" in arguments:
-                data["desc"] = arguments["desc"]
-            if "list_id" in arguments:
-                data["idList"] = arguments["list_id"]
-
-            card = make_trello_request("PUT", f"/cards/{arguments['card_id']}", data=data)
-            return [TextContent(
-                type="text",
-                text=f"Updated card: {card['name']}\nID: {card['id']}\nURL: {card['url']}"
-            )]
-
-        elif name == "get_card":
-            card = make_trello_request("GET", f"/cards/{arguments['card_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Card: {card['name']}\nID: {card['id']}\nDescription: {card.get('desc', 'N/A')}\nList ID: {card['idList']}\nURL: {card['url']}"
-            )]
-
-        elif name == "create_list":
-            data = {
-                "name": arguments["name"],
-                "idBoard": arguments["board_id"]
-            }
-            if "pos" in arguments:
-                data["pos"] = arguments["pos"]
-
-            lst = make_trello_request("POST", "/lists", data=data)
-            return [TextContent(
-                type="text",
-                text=f"Created list: {lst['name']}\nID: {lst['id']}\nBoard ID: {lst['idBoard']}"
-            )]
-
-        elif name == "list_organizations":
-            orgs = make_trello_request("GET", "/members/me/organizations")
-            result = "\n".join([f"- {org['displayName']} (ID: {org['id']}, Name: {org['name']})" for org in orgs])
-            return [TextContent(type="text", text=f"Your Organizations/Workspaces:\n{result}")]
-
-        elif name == "get_organization":
-            org = make_trello_request("GET", f"/organizations/{arguments['org_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Organization: {org['displayName']}\nID: {org['id']}\nName: {org['name']}\nDescription: {org.get('desc', 'N/A')}\nURL: {org['url']}\nWebsite: {org.get('website', 'N/A')}"
-            )]
-
-        elif name == "list_organization_boards":
-            boards = make_trello_request("GET", f"/organizations/{arguments['org_id']}/boards")
-            result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
-            return [TextContent(type="text", text=f"Boards in organization:\n{result}")]
-
-        elif name == "list_organization_members":
-            members = make_trello_request("GET", f"/organizations/{arguments['org_id']}/members")
-            result = "\n".join([f"- {member['fullName']} (@{member['username']}, ID: {member['id']})" for member in members])
-            return [TextContent(type="text", text=f"Members in organization:\n{result}")]
-
-        elif name == "add_organization_member":
-            data = {
-                "email": arguments["email"]
-            }
-            if "full_name" in arguments:
-                data["fullName"] = arguments["full_name"]
-            if "type" in arguments:
-                data["type"] = arguments["type"]
-
-            member = make_trello_request("PUT", f"/organizations/{arguments['org_id']}/members", data=data)
-            return [TextContent(
-                type="text",
-                text=f"Added member to organization: {member.get('fullName', arguments['email'])}"
-            )]
-
-        elif name == "remove_organization_member":
-            make_trello_request("DELETE", f"/organizations/{arguments['org_id']}/members/{arguments['member_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Removed member {arguments['member_id']} from organization"
-            )]
-
-        elif name == "add_card_label":
-            data = {"value": arguments["label_id"]}
-            result = make_trello_request("POST", f"/cards/{arguments['card_id']}/idLabels", data=data)
-            
-            # Get card details to include in response
-            card = make_trello_request("GET", f"/cards/{arguments['card_id']}")
-            
-            # Find the label details from the card's labels
-            label_info = None
-            for label in card.get('labels', []):
-                if label['id'] == arguments['label_id']:
-                    label_info = label
-                    break
-            
-            if label_info:
-                label_name = label_info.get('name', 'Unnamed')
-                label_color = label_info.get('color', 'none')
-                return [TextContent(
-                    type="text",
-                    text=f"Added label to card: {card['name']}\nLabel: {label_name} ({label_color})\nCard ID: {card['id']}"
-                )]
+def handle_request_errors(func):
+    """Decorator that wraps tool functions with standard Trello API error handling."""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except ValueError as e:
+            return f"Validation Error: {str(e)}"
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"Trello API error: {e}")
+            logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+            status_code = e.response.status_code if hasattr(e, 'response') else 'unknown'
+            if status_code == 401:
+                return "Error: Authentication failed. Please check your credentials."
+            elif status_code == 403:
+                return "Error: Permission denied. You don't have access to this resource."
+            elif status_code == 404:
+                return "Error: Resource not found. Please check the ID."
+            elif status_code == 429:
+                return "Error: Rate limit exceeded. Please try again later."
             else:
-                return [TextContent(
-                    type="text",
-                    text=f"Added label to card: {card['name']}\nCard ID: {card['id']}"
-                )]
+                return f"Error: API request failed (status {status_code})."
+        except requests.exceptions.Timeout:
+            return "Error: Request timed out. Please try again."
+        except requests.exceptions.ConnectionError:
+            return "Error: Cannot connect to Trello API. Please check your network."
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return "Error: An unexpected error occurred. Please try again."
+    return wrapper
 
-        elif name == "remove_card_label":
-            make_trello_request("DELETE", f"/cards/{arguments['card_id']}/idLabels/{arguments['label_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Removed label from card\nCard ID: {arguments['card_id']}\nLabel ID: {arguments['label_id']}"
-            )]
 
-        elif name == "list_card_labels":
-            labels = make_trello_request("GET", f"/cards/{arguments['card_id']}/labels")
-            
-            # Handle empty label list case
-            if not labels:
-                return [TextContent(
-                    type="text",
-                    text="Labels on card:\n(No labels)"
-                )]
-            
-            # Format response as list of labels with name, color, and ID
-            result = "\n".join([
-                f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
-                for label in labels
-            ])
-            return [TextContent(type="text", text=f"Labels on card:\n{result}")]
+@mcp_server.tool()
+@handle_request_errors
+async def list_boards() -> str:
+    """List all boards accessible to the authenticated user."""
+    boards = make_trello_request("GET", "/members/me/boards")
+    result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
+    return f"Your Trello Boards:\n{result}"
 
-        elif name == "list_board_labels":
-            labels = make_trello_request("GET", f"/boards/{arguments['board_id']}/labels")
-            
-            # Format response as list of available labels with name, color, and ID
-            result = "\n".join([
-                f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
-                for label in labels
-            ])
-            return [TextContent(type="text", text=f"Available labels on board:\n{result}")]
 
-        elif name == "filter_cards_by_label":
-            # Extract board_id and label_id from arguments
-            board_id = arguments['board_id']
-            label_id = arguments['label_id']
-            
-            # Call make_trello_request() with GET method to /boards/{board_id}/cards
-            cards = make_trello_request("GET", f"/boards/{board_id}/cards")
-            
-            # Filter cards by checking if label_id is in card's idLabels array
-            filtered_cards = [card for card in cards if label_id in card.get('idLabels', [])]
-            
-            # Handle empty results case
-            if not filtered_cards:
-                # Get label name for better user experience
-                labels = make_trello_request("GET", f"/boards/{board_id}/labels")
-                label_name = "Unknown"
-                for label in labels:
-                    if label['id'] == label_id:
-                        label_name = label.get('name', 'Unnamed')
-                        break
-                
-                return [TextContent(
-                    type="text",
-                    text=f"Cards with label {label_name}:\n(No cards found)"
-                )]
-            
-            # Get label name for the response
-            label_name = "Unknown"
-            if filtered_cards:
-                # Get label details from the first card's labels
-                for label in filtered_cards[0].get('labels', []):
-                    if label['id'] == label_id:
-                        label_name = label.get('name', 'Unnamed')
-                        break
-            
-            # Format response as list of cards with name, ID, and list ID
-            result = "\n".join([
-                f"- {card['name']} (ID: {card['id']}, List: {card['idList']})"
-                for card in filtered_cards
-            ])
-            return [TextContent(type="text", text=f"Cards with label {label_name}:\n{result}")]
+@mcp_server.tool()
+@handle_request_errors
+async def get_board(board_id: str) -> str:
+    """Get details about a specific board."""
+    validate_trello_id(board_id, "Board ID")
+    board = make_trello_request("GET", f"/boards/{board_id}")
+    return f"Board: {board['name']}\nID: {board['id']}\nURL: {board['url']}\nDescription: {board.get('desc', 'N/A')}"
 
-        elif name == "add_card_member":
-            data = {"value": arguments["member_id"]}
-            make_trello_request("POST", f"/cards/{arguments['card_id']}/idMembers", data=data)
-            return [TextContent(
-                type="text",
-                text=f"Added member {arguments['member_id']} to card {arguments['card_id']}"
-            )]
 
-        elif name == "remove_card_member":
-            make_trello_request("DELETE", f"/cards/{arguments['card_id']}/idMembers/{arguments['member_id']}")
-            return [TextContent(
-                type="text",
-                text=f"Removed member {arguments['member_id']} from card {arguments['card_id']}"
-            )]
+@mcp_server.tool()
+@handle_request_errors
+async def list_board_lists(board_id: str) -> str:
+    """Get all lists on a board."""
+    validate_trello_id(board_id, "Board ID")
+    lists = make_trello_request("GET", f"/boards/{board_id}/lists")
+    result = "\n".join([f"- {lst['name']} (ID: {lst['id']})" for lst in lists])
+    return f"Lists on board:\n{result}"
 
-        elif name == "list_card_members":
-            members = make_trello_request("GET", f"/cards/{arguments['card_id']}/members")
-            
-            # Handle empty member list case
-            if not members:
-                return [TextContent(type="text", text="No members assigned to this card")]
-            
-            # Format response as list of members with fullName, username, and ID
-            result = "\n".join([
-                f"- {member['fullName']} (@{member['username']}, ID: {member['id']})"
-                for member in members
-            ])
-            return [TextContent(type="text", text=f"Members on card:\n{result}")]
 
-        else:
-            return [TextContent(type="text", text=f"Unknown tool: {name}")]
+@mcp_server.tool()
+@handle_request_errors
+async def list_board_cards(board_id: str) -> str:
+    """Get all cards on a board."""
+    validate_trello_id(board_id, "Board ID")
+    cards = make_trello_request("GET", f"/boards/{board_id}/cards")
+    result = "\n".join([f"- {card['name']} (ID: {card['id']}, List: {card['idList']})" for card in cards])
+    return f"Cards on board:\n{result}"
 
-    except requests.exceptions.HTTPError as e:
-        # Log detailed error internally but return sanitized message to user
-        logger.error(f"Trello API error for tool {name}: {e}")
-        logger.error(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
-        # Return generic error without exposing internal details
-        status_code = e.response.status_code if hasattr(e, 'response') else 'unknown'
-        if status_code == 401:
-            return [TextContent(type="text", text="Error: Authentication failed. Please check your credentials.")]
-        elif status_code == 403:
-            return [TextContent(type="text", text="Error: Permission denied. You don't have access to this resource.")]
-        elif status_code == 404:
-            return [TextContent(type="text", text="Error: Resource not found. Please check the ID.")]
-        elif status_code == 429:
-            return [TextContent(type="text", text="Error: Rate limit exceeded. Please try again later.")]
-        else:
-            return [TextContent(type="text", text=f"Error: API request failed (status {status_code}).")]
-    except requests.exceptions.Timeout:
-        logger.error(f"Timeout executing tool {name}")
-        return [TextContent(type="text", text="Error: Request timed out. Please try again.")]
-    except requests.exceptions.ConnectionError:
-        logger.error(f"Connection error executing tool {name}")
-        return [TextContent(type="text", text="Error: Cannot connect to Trello API. Please check your network.")]
-    except Exception as e:
-        # Log full error internally
-        logger.error(f"Error executing tool {name}: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        # Return generic error message
-        return [TextContent(type="text", text=f"Error: An unexpected error occurred. Please try again.")]
 
+@mcp_server.tool()
+@handle_request_errors
+async def create_card(list_id: str, name: str, desc: Optional[str] = None) -> str:
+    """Create a new card on a list."""
+    validate_trello_id(list_id, "List ID")
+    data = {"idList": list_id, "name": name}
+    if desc is not None:
+        data["desc"] = desc
+    card = make_trello_request("POST", "/cards", data=data)
+    return f"Created card: {card['name']}\nID: {card['id']}\nURL: {card['url']}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def update_card(card_id: str, name: Optional[str] = None, desc: Optional[str] = None, list_id: Optional[str] = None) -> str:
+    """Update a card's properties."""
+    validate_trello_id(card_id, "Card ID")
+    data = {}
+    if name is not None:
+        data["name"] = name
+    if desc is not None:
+        data["desc"] = desc
+    if list_id is not None:
+        data["idList"] = list_id
+    card = make_trello_request("PUT", f"/cards/{card_id}", data=data)
+    return f"Updated card: {card['name']}\nID: {card['id']}\nURL: {card['url']}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def get_card(card_id: str) -> str:
+    """Get details about a specific card."""
+    validate_trello_id(card_id, "Card ID")
+    card = make_trello_request("GET", f"/cards/{card_id}")
+    return f"Card: {card['name']}\nID: {card['id']}\nDescription: {card.get('desc', 'N/A')}\nList ID: {card['idList']}\nURL: {card['url']}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def create_list(board_id: str, name: str, pos: Optional[str] = None) -> str:
+    """Create a new list on a board."""
+    validate_trello_id(board_id, "Board ID")
+    data = {"name": name, "idBoard": board_id}
+    if pos is not None:
+        data["pos"] = pos
+    lst = make_trello_request("POST", "/lists", data=data)
+    return f"Created list: {lst['name']}\nID: {lst['id']}\nBoard ID: {lst['idBoard']}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_organizations() -> str:
+    """List all organizations/workspaces the authenticated user belongs to."""
+    orgs = make_trello_request("GET", "/members/me/organizations")
+    result = "\n".join([f"- {org['displayName']} (ID: {org['id']}, Name: {org['name']})" for org in orgs])
+    return f"Your Organizations/Workspaces:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def get_organization(org_id: str) -> str:
+    """Get details about a specific organization/workspace."""
+    validate_trello_id(org_id, "Organization ID")
+    org = make_trello_request("GET", f"/organizations/{org_id}")
+    return f"Organization: {org['displayName']}\nID: {org['id']}\nName: {org['name']}\nDescription: {org.get('desc', 'N/A')}\nURL: {org['url']}\nWebsite: {org.get('website', 'N/A')}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_organization_boards(org_id: str) -> str:
+    """Get all boards in an organization/workspace."""
+    validate_trello_id(org_id, "Organization ID")
+    boards = make_trello_request("GET", f"/organizations/{org_id}/boards")
+    result = "\n".join([f"- {board['name']} (ID: {board['id']})" for board in boards])
+    return f"Boards in organization:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_organization_members(org_id: str) -> str:
+    """Get all members of an organization/workspace."""
+    validate_trello_id(org_id, "Organization ID")
+    members = make_trello_request("GET", f"/organizations/{org_id}/members")
+    result = "\n".join([f"- {member['fullName']} (@{member['username']}, ID: {member['id']})" for member in members])
+    return f"Members in organization:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def add_organization_member(org_id: str, email: str, full_name: Optional[str] = None, type: Optional[str] = None) -> str:
+    """Add a member to an organization/workspace."""
+    validate_trello_id(org_id, "Organization ID")
+    data = {"email": email}
+    if full_name is not None:
+        data["fullName"] = full_name
+    if type is not None:
+        data["type"] = type
+    member = make_trello_request("PUT", f"/organizations/{org_id}/members", data=data)
+    return f"Added member to organization: {member.get('fullName', email)}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def remove_organization_member(org_id: str, member_id: str) -> str:
+    """Remove a member from an organization/workspace."""
+    validate_trello_id(org_id, "Organization ID")
+    validate_trello_id(member_id, "Member ID")
+    make_trello_request("DELETE", f"/organizations/{org_id}/members/{member_id}")
+    return f"Removed member {member_id} from organization"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def add_card_label(card_id: str, label_id: str) -> str:
+    """Add a label to a card."""
+    validate_trello_id(card_id, "Card ID")
+    validate_trello_id(label_id, "Label ID")
+    data = {"value": label_id}
+    make_trello_request("POST", f"/cards/{card_id}/idLabels", data=data)
+    card = make_trello_request("GET", f"/cards/{card_id}")
+    label_info = None
+    for label in card.get('labels', []):
+        if label['id'] == label_id:
+            label_info = label
+            break
+    if label_info:
+        label_name = label_info.get('name', 'Unnamed')
+        label_color = label_info.get('color', 'none')
+        return f"Added label to card: {card['name']}\nLabel: {label_name} ({label_color})\nCard ID: {card['id']}"
+    else:
+        return f"Added label to card: {card['name']}\nCard ID: {card['id']}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def remove_card_label(card_id: str, label_id: str) -> str:
+    """Remove a label from a card."""
+    validate_trello_id(card_id, "Card ID")
+    validate_trello_id(label_id, "Label ID")
+    make_trello_request("DELETE", f"/cards/{card_id}/idLabels/{label_id}")
+    return f"Removed label from card\nCard ID: {card_id}\nLabel ID: {label_id}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_card_labels(card_id: str) -> str:
+    """List all labels on a card."""
+    validate_trello_id(card_id, "Card ID")
+    labels = make_trello_request("GET", f"/cards/{card_id}/labels")
+    if not labels:
+        return "Labels on card:\n(No labels)"
+    result = "\n".join([
+        f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
+        for label in labels
+    ])
+    return f"Labels on card:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_board_labels(board_id: str) -> str:
+    """List all available labels on a board."""
+    validate_trello_id(board_id, "Board ID")
+    labels = make_trello_request("GET", f"/boards/{board_id}/labels")
+    result = "\n".join([
+        f"- {label.get('name', 'Unnamed')} (Color: {label.get('color', 'none')}, ID: {label['id']})"
+        for label in labels
+    ])
+    return f"Available labels on board:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def filter_cards_by_label(board_id: str, label_id: str) -> str:
+    """Filter cards on a board by a specific label."""
+    validate_trello_id(board_id, "Board ID")
+    validate_trello_id(label_id, "Label ID")
+    cards = make_trello_request("GET", f"/boards/{board_id}/cards")
+    filtered_cards = [card for card in cards if label_id in card.get('idLabels', [])]
+    if not filtered_cards:
+        labels = make_trello_request("GET", f"/boards/{board_id}/labels")
+        label_name = "Unknown"
+        for label in labels:
+            if label['id'] == label_id:
+                label_name = label.get('name', 'Unnamed')
+                break
+        return f"Cards with label {label_name}:\n(No cards found)"
+    label_name = "Unknown"
+    if filtered_cards:
+        for label in filtered_cards[0].get('labels', []):
+            if label['id'] == label_id:
+                label_name = label.get('name', 'Unnamed')
+                break
+    result = "\n".join([
+        f"- {card['name']} (ID: {card['id']}, List: {card['idList']})"
+        for card in filtered_cards
+    ])
+    return f"Cards with label {label_name}:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_board_members(board_id: str) -> str:
+    """List all members of a board with their permission levels."""
+    validate_trello_id(board_id, "Board ID")
+    members = make_trello_request("GET", f"/boards/{board_id}/members")
+    result = "\n".join([
+        f"- {member['fullName']} (@{member['username']}, ID: {member['id']}, Permission: {member.get('memberType', 'normal')})"
+        for member in members
+    ])
+    return f"Board Members:\n{result}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def add_board_member(board_id: str, member_id: str, type: Optional[str] = None) -> str:
+    """Add an existing Trello user to a board with specified permission level."""
+    validate_trello_id(board_id, "Board ID")
+    validate_trello_id(member_id, "Member ID")
+    member_type = type if type is not None else "normal"
+    params = {"type": member_type}
+    make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
+    member = make_trello_request("GET", f"/members/{member_id}")
+    return f"Added member to board: {member['fullName']} (@{member['username']})\nPermission: {member_type}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def remove_board_member(board_id: str, member_id: str) -> str:
+    """Remove a member from a board."""
+    validate_trello_id(board_id, "Board ID")
+    validate_trello_id(member_id, "Member ID")
+    make_trello_request("DELETE", f"/boards/{board_id}/members/{member_id}")
+    return f"Removed member {member_id} from board"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def update_board_member(board_id: str, member_id: str, type: str) -> str:
+    """Update a member's permission level on a board."""
+    validate_trello_id(board_id, "Board ID")
+    validate_trello_id(member_id, "Member ID")
+    valid_permissions = ["admin", "normal", "observer"]
+    if type not in valid_permissions:
+        return f"Error: Invalid permission type. Must be one of: {', '.join(valid_permissions)}"
+    params = {"type": type}
+    make_trello_request("PUT", f"/boards/{board_id}/members/{member_id}", params=params)
+    member = make_trello_request("GET", f"/members/{member_id}")
+    return f"Updated member permission: {member['fullName']} (@{member['username']})\nNew permission: {type}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def invite_board_member(board_id: str, email: str, type: Optional[str] = None) -> str:
+    """Invite a new member to a board via email address."""
+    validate_trello_id(board_id, "Board ID")
+    member_type = type if type is not None else "normal"
+    params = {"email": email, "type": member_type}
+    make_trello_request("PUT", f"/boards/{board_id}/members", params=params)
+    return f"Invited {email} to board\nPermission: {member_type}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def add_card_member(card_id: str, member_id: str) -> str:
+    """Add a member to a card."""
+    validate_trello_id(card_id, "Card ID")
+    validate_trello_id(member_id, "Member ID")
+    data = {"value": member_id}
+    make_trello_request("POST", f"/cards/{card_id}/idMembers", data=data)
+    return f"Added member {member_id} to card {card_id}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def remove_card_member(card_id: str, member_id: str) -> str:
+    """Remove a member from a card."""
+    validate_trello_id(card_id, "Card ID")
+    validate_trello_id(member_id, "Member ID")
+    make_trello_request("DELETE", f"/cards/{card_id}/idMembers/{member_id}")
+    return f"Removed member {member_id} from card {card_id}"
+
+
+@mcp_server.tool()
+@handle_request_errors
+async def list_card_members(card_id: str) -> str:
+    """List all members assigned to a card."""
+    validate_trello_id(card_id, "Card ID")
+    members = make_trello_request("GET", f"/cards/{card_id}/members")
+    if not members:
+        return "No members assigned to this card"
+    result = "\n".join([
+        f"- {member['fullName']} (@{member['username']}, ID: {member['id']})"
+        for member in members
+    ])
+    return f"Members on card:\n{result}"
 
 
 async def main():
@@ -1250,15 +767,13 @@ async def main():
     
     logger.info(f"Starting Trello MCP server (authenticated with key: {auth.api_key[:8]}...)")
     
-    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+    await mcp_server.run_stdio_async()
 
 
 def run():
     """Synchronous entry point for the CLI."""
     import asyncio
     asyncio.run(main())
+
+if __name__ == "__main__":
+    run()

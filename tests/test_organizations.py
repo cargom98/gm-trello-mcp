@@ -12,15 +12,15 @@ import sys
 import os
 # Add parent directory to path to import from root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from server import call_tool
+from server import list_organizations, get_organization, list_organization_boards, list_organization_members
 from auth import TrelloAuth
 
 async def test_list_organizations():
     """Test listing all organizations."""
     print("\n📋 Listing all organizations...")
     try:
-        result = await call_tool("list_organizations", {})
-        print(result[0].text)
+        result = await list_organizations()
+        print(result)
         return True
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -30,8 +30,8 @@ async def test_get_organization(org_id):
     """Test getting organization details."""
     print(f"\n🔍 Getting details for organization '{org_id}'...")
     try:
-        result = await call_tool("get_organization", {"org_id": org_id})
-        print(result[0].text)
+        result = await get_organization(org_id=org_id)
+        print(result)
         return True
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -41,8 +41,8 @@ async def test_list_organization_boards(org_id):
     """Test listing organization boards."""
     print(f"\n📊 Listing boards in organization '{org_id}'...")
     try:
-        result = await call_tool("list_organization_boards", {"org_id": org_id})
-        print(result[0].text)
+        result = await list_organization_boards(org_id=org_id)
+        print(result)
         return True
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -52,8 +52,8 @@ async def test_list_organization_members(org_id):
     """Test listing organization members."""
     print(f"\n👥 Listing members in organization '{org_id}'...")
     try:
-        result = await call_tool("list_organization_members", {"org_id": org_id})
-        print(result[0].text)
+        result = await list_organization_members(org_id=org_id)
+        print(result)
         return True
     except Exception as e:
         print(f"❌ Error: {e}")
