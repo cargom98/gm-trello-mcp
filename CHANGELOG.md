@@ -1,3 +1,22 @@
+## [3.0.0] - 2026-04-04
+
+### Changed
+- Migrate server from low-level MCP SDK to FastMCP decorator-based pattern
+- Replace monolithic `list_tools()`/`call_tool()` dispatcher with individual `@mcp_server.tool()` decorated functions
+- Add centralized `handle_request_errors` decorator for error handling
+- Update `main()` to use `run_stdio_async()` instead of manual stdio server setup
+- All 27 tools now registered as standalone async functions with typed parameters
+
+### Added
+- Comprehensive test suite with 23 tests covering:
+  - Error handling decorator (10 tests)
+  - Schema equivalence property tests for all 27 tools
+  - Output format equivalence property tests
+  - Label filtering correctness property test
+  - Optional field passthrough property test
+  - Invalid ID rejection property test
+  - Tool registration completeness tests
+
 ## [2.0.5] - 2026-02-17
 
 ### Changed
